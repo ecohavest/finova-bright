@@ -104,6 +104,23 @@ export const transactionStatusEnum = pgEnum("transaction_status", [
   "cancelled",
 ]);
 
+export const cardTypeEnum = pgEnum("card_type", [
+  "classic-debit",
+  "premium-debit",
+  "gold-credit",
+  "platinum-credit",
+]);
+
+export const cardStatusEnum = pgEnum("card_status", [
+  "pending",
+  "approved",
+  "rejected",
+  "issued",
+  "active",
+  "suspended",
+  "expired",
+]);
+
 export const balance = pgTable("balance", {
   id: text("id").primaryKey(),
   userId: text("user_id")
@@ -150,11 +167,38 @@ export const transaction = pgTable("transaction", {
     .notNull(),
 });
 
+export const card = pgTable("card", {
+  id: text("id").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  cardType: cardTypeEnum("card_type").notNull(),
+  cardName: text("card_name").notNull(),
+  cardNumber: text("card_number"),
+  expiryDate: text("expiry_date"),
+  cvv: text("cvv"),
+  status: cardStatusEnum("status")
+    .$defaultFn(() => "pending")
+    .notNull(),
+  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+  paymentReference: text("payment_reference"),
+  paymentStatus: text("payment_status").$defaultFn(() => "pending"),
+  adminNotes: text("admin_notes"),
+  issuedAt: timestamp("issued_at"),
+  createdAt: timestamp("created_at")
+    .$defaultFn(() => /* @__PURE__ */ new Date())
+    .notNull(),
+  updatedAt: timestamp("updated_at")
+    .$defaultFn(() => /* @__PURE__ */ new Date())
+    .notNull(),
+});
+
 export const userRelations = relations(user, ({ one, many }) => ({
   accountInfo: one(accountInfo),
   balance: one(balance),
   transactions: many(transaction),
   sentTransactions: many(transaction, { relationName: "sender" }),
+  cards: many(card),
 }));
 
 export const accountInfoRelations = relations(accountInfo, ({ one }) => ({
@@ -180,5 +224,12 @@ export const transactionRelations = relations(transaction, ({ one }) => ({
     fields: [transaction.senderId],
     references: [user.id],
     relationName: "sender",
+  }),
+}));
+
+export const cardRelations = relations(card, ({ one }) => ({
+  user: one(user, {
+    fields: [card.userId],
+    references: [user.id],
   }),
 }));

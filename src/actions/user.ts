@@ -1,8 +1,15 @@
 "use server";
 
 import db from "@/db";
-import { user, accountInfo, balance, transaction } from "@/db/schema";
-import { eq, desc } from "drizzle-orm";
+import {
+  user,
+  accountInfo,
+  balance,
+  transaction,
+  card,
+  cardTypeEnum,
+} from "@/db/schema";
+import { eq, desc, and } from "drizzle-orm";
 import { serverAuth } from "@/lib/server-auth";
 import { revalidatePath } from "next/cache";
 
@@ -55,6 +62,100 @@ export async function getUserTransactions() {
     .orderBy(desc(transaction.createdAt));
 
   return transactions;
+}
+
+export async function getUserCards() {
+  const currentUser = await serverAuth();
+  if (!currentUser) {
+    throw new Error("Not authenticated");
+  }
+
+  const userCards = await db
+    .select({
+      id: card.id,
+      cardType: card.cardType,
+      cardName: card.cardName,
+      cardNumber: card.cardNumber,
+      expiryDate: card.expiryDate,
+      status: card.status,
+      price: card.price,
+      paymentStatus: card.paymentStatus,
+      createdAt: card.createdAt,
+      issuedAt: card.issuedAt,
+    })
+    .from(card)
+    .where(eq(card.userId, currentUser.id))
+    .orderBy(desc(card.createdAt));
+
+  return userCards;
+}
+
+export async function createCardRequest(
+  cardType: string,
+  cardName: string,
+  price: number,
+  paymentReference: string
+) {
+  const currentUser = await serverAuth();
+  if (!currentUser) {
+    throw new Error("Not authenticated");
+  }
+
+  const cardId = crypto.randomUUID();
+
+  try {
+    await db.insert(card).values({
+      id: cardId,
+      userId: currentUser.id,
+      cardType: cardType as (typeof cardTypeEnum.enumValues)[number],
+      cardName,
+      price: price.toString(),
+      paymentReference,
+      paymentStatus: "pending",
+      status: "pending",
+    });
+
+    revalidatePath("/dashboard/card");
+    revalidatePath("/dashboard");
+
+    return {
+      success: true,
+      cardId,
+      message: "Card request created successfully",
+    };
+  } catch (error) {
+    console.error("Error creating card request:", error);
+    throw new Error("Failed to create card request");
+  }
+}
+
+export async function confirmCardPayment(cardId: string) {
+  const currentUser = await serverAuth();
+  if (!currentUser) {
+    throw new Error("Not authenticated");
+  }
+
+  try {
+    await db
+      .update(card)
+      .set({
+        paymentStatus: "confirmed",
+        status: "pending",
+        updatedAt: new Date(),
+      })
+      .where(and(eq(card.id, cardId), eq(card.userId, currentUser.id)));
+
+    revalidatePath("/dashboard/card");
+    revalidatePath("/dashboard");
+
+    return {
+      success: true,
+      message: "Payment confirmed successfully",
+    };
+  } catch (error) {
+    console.error("Error confirming payment:", error);
+    throw new Error("Failed to confirm payment");
+  }
 }
 
 export async function getUserByAccountNumber(accountNumber: string) {

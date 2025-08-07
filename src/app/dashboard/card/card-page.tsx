@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   Card,
   CardContent,
@@ -10,15 +10,18 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {  CreditCard,
+import {
+  CreditCard,
   Eye,
   EyeOff,
   Copy,
   Settings,
   Lock,
   Plus,
+  AlertCircle,
 } from "lucide-react";
-import { useState } from "react";
+import { getUserCards } from "@/actions/user";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 interface CardPageProps {
@@ -31,9 +34,45 @@ interface CardPageProps {
   };
 }
 
+interface UserCard {
+  id: string;
+  cardType: string;
+  cardName: string;
+  cardNumber: string | null;
+  expiryDate: string | null;
+  status: string;
+  price: string;
+  paymentStatus: string | null;
+  createdAt: Date;
+  issuedAt: Date | null;
+}
+
 const CardPage = ({ user }: CardPageProps) => {
   const [showDetails, setShowDetails] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [userCards, setUserCards] = useState<UserCard[]>([]);
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
+
+  useEffect(() => {
+    const fetchUserCards = async () => {
+      try {
+        const cards = await getUserCards();
+        setUserCards(cards);
+
+        if (cards.length === 0) {
+          router.push("/dashboard/card/request");
+        }
+      } catch (error) {
+        console.error("Error fetching user cards:", error);
+        router.push("/dashboard/card/request");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserCards();
+  }, [router]);
 
   const formatCurrency = (amount: string, currency: string = "USD") => {
     return new Intl.NumberFormat("en-US", {
@@ -48,22 +87,109 @@ const CardPage = ({ user }: CardPageProps) => {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const cardNumber = "4532 1234 5678 " + user.accountNumber.slice(-4);
-  const expiryDate = "12/29";
-  const cvv = "123";
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "active":
+        return "bg-green-500";
+      case "pending":
+        return "bg-yellow-500";
+      case "issued":
+        return "bg-blue-500";
+      case "suspended":
+        return "bg-red-500";
+      default:
+        return "bg-gray-500";
+    }
+  };
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case "active":
+        return "Active";
+      case "pending":
+        return "Pending";
+      case "issued":
+        return "Issued";
+      case "suspended":
+        return "Suspended";
+      default:
+        return status;
+    }
+  };
+
+  const getCardGradient = (cardType: string) => {
+    switch (cardType) {
+      case "classic-debit":
+        return "from-slate-700 to-slate-900";
+      case "premium-debit":
+        return "from-blue-600 to-blue-900";
+      case "gold-credit":
+        return "from-yellow-500 to-yellow-700";
+      case "platinum-credit":
+        return "from-purple-600 to-purple-900";
+      default:
+        return "from-blue-600 to-blue-900";
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 py-8">
+        <div className="container mx-auto px-4">
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
+              <p className="mt-4 text-gray-600 dark:text-gray-400">
+                Loading your cards...
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (userCards.length === 0) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 py-8">
+        <div className="container mx-auto px-4">
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center">
+              <AlertCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+                No Cards Found
+              </h2>
+              <p className="text-gray-600 dark:text-gray-400 mb-6">
+                You don&apos;t have any cards yet. Request your first card to
+                get started.
+              </p>
+              <Button asChild>
+                <Link href="/dashboard/card/request">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Request Your First Card
+                </Link>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const activeCard =
+    userCards.find((card) => card.status === "active") || userCards[0];
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 py-8">
       <div className="container mx-auto px-4">
         <div className="max-w-4xl mx-auto">
-
           <div className="flex justify-between">
             <div className="text-left mb-8">
               <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-                My Card
+                My Cards
               </h1>
               <p className="text-gray-600 dark:text-gray-400 hidden lg:block">
-                Manage your card and view details
+                Manage your cards and view details
               </p>
             </div>
             <div className="flex justify-end">
@@ -79,7 +205,11 @@ const CardPage = ({ user }: CardPageProps) => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <div className="space-y-6">
               <div className="relative">
-                <div className="h-56 w-full max-w-sm mx-auto rounded-2xl bg-gradient-to-br from-blue-600 to-blue-900 dark:from-blue-700 dark:to-blue-950 p-6 text-white relative overflow-hidden shadow-2xl dark:shadow-gray-900/50 transform hover:scale-105 transition-transform duration-300">
+                <div
+                  className={`h-56 w-full max-w-sm mx-auto rounded-2xl bg-gradient-to-br ${getCardGradient(
+                    activeCard.cardType
+                  )} p-6 text-white relative overflow-hidden shadow-2xl dark:shadow-gray-900/50 transform hover:scale-105 transition-transform duration-300`}
+                >
                   <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16"></div>
                   <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full -ml-12 -mb-12"></div>
                   <div className="absolute top-4 right-4 w-12 h-8 bg-white/20 rounded-md flex items-center justify-center">
@@ -91,16 +221,21 @@ const CardPage = ({ user }: CardPageProps) => {
                       <div className="flex justify-between items-start mb-6">
                         <div>
                           <div className="text-sm opacity-80 font-medium">
-                            PREMIUM DEBIT
+                            {activeCard.cardName.toUpperCase()}
                           </div>
-                          <div className="text-xs opacity-60">CARD</div>
+                          <div className="text-xs opacity-60">
+                            {activeCard.cardType
+                              .toUpperCase()
+                              .replace("-", " ")}{" "}
+                            CARD
+                          </div>
                         </div>
                         <CreditCard className="w-8 h-8 opacity-80" />
                       </div>
 
                       <div className="text-xl font-mono tracking-wider mb-4">
-                        {showDetails
-                          ? cardNumber
+                        {showDetails && activeCard.cardNumber
+                          ? activeCard.cardNumber
                           : "**** **** **** " + user.accountNumber.slice(-4)}
                       </div>
                     </div>
@@ -119,13 +254,9 @@ const CardPage = ({ user }: CardPageProps) => {
                           VALID THRU
                         </div>
                         <div className="text-sm">
-                          {showDetails ? expiryDate : "**/**"}
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-xs opacity-80 mb-1">CVV</div>
-                        <div className="text-sm">
-                          {showDetails ? cvv : "***"}
+                          {showDetails && activeCard.expiryDate
+                            ? activeCard.expiryDate
+                            : "**/**"}
                         </div>
                       </div>
                     </div>
@@ -153,7 +284,12 @@ const CardPage = ({ user }: CardPageProps) => {
                   variant="outline"
                   size="sm"
                   className="flex items-center gap-2"
-                  onClick={() => copyToClipboard(cardNumber)}
+                  onClick={() =>
+                    copyToClipboard(
+                      activeCard.cardNumber ||
+                        "**** **** **** " + user.accountNumber.slice(-4)
+                    )
+                  }
                 >
                   <Copy className="w-4 h-4" />
                   {copied ? "Copied!" : "Copy Number"}
@@ -195,9 +331,11 @@ const CardPage = ({ user }: CardPageProps) => {
                         Card Type
                       </label>
                       <div className="flex items-center gap-2 mt-1">
-                        <Badge variant="default">DEBIT</Badge>
+                        <Badge variant="default">
+                          {activeCard.cardType.toUpperCase().replace("-", " ")}
+                        </Badge>
                         <span className="text-sm text-gray-700 dark:text-gray-300">
-                          Premium
+                          {activeCard.cardName}
                         </span>
                       </div>
                     </div>
@@ -206,9 +344,13 @@ const CardPage = ({ user }: CardPageProps) => {
                         Status
                       </label>
                       <div className="flex items-center gap-2 mt-1">
-                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                        <div
+                          className={`w-2 h-2 ${getStatusColor(
+                            activeCard.status
+                          )} rounded-full`}
+                        ></div>
                         <span className="text-sm text-gray-700 dark:text-gray-300">
-                          Active
+                          {getStatusText(activeCard.status)}
                         </span>
                       </div>
                     </div>
@@ -219,8 +361,8 @@ const CardPage = ({ user }: CardPageProps) => {
                       Card Number
                     </label>
                     <div className="font-mono text-sm text-gray-900 dark:text-gray-100 mt-1">
-                      {showDetails
-                        ? cardNumber
+                      {showDetails && activeCard.cardNumber
+                        ? activeCard.cardNumber
                         : "**** **** **** " + user.accountNumber.slice(-4)}
                     </div>
                   </div>
@@ -231,15 +373,17 @@ const CardPage = ({ user }: CardPageProps) => {
                         Expiry Date
                       </label>
                       <div className="font-mono text-sm text-gray-900 dark:text-gray-100 mt-1">
-                        {showDetails ? expiryDate : "**/**"}
+                        {showDetails && activeCard.expiryDate
+                          ? activeCard.expiryDate
+                          : "**/**"}
                       </div>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-gray-600 dark:text-gray-300">
-                        CVV
+                        Price
                       </label>
                       <div className="font-mono text-sm text-gray-900 dark:text-gray-100 mt-1">
-                        {showDetails ? cvv : "***"}
+                        {formatCurrency(activeCard.price)}
                       </div>
                     </div>
                   </div>
@@ -254,6 +398,46 @@ const CardPage = ({ user }: CardPageProps) => {
                   </div>
                 </CardContent>
               </Card>
+
+              {userCards.length > 1 && (
+                <Card className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
+                  <CardHeader>
+                    <CardTitle className="text-gray-900 dark:text-gray-100">
+                      All Cards ({userCards.length})
+                    </CardTitle>
+                    <CardDescription className="text-gray-600 dark:text-gray-400">
+                      Your other cards and their status
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {userCards.map((card) => (
+                      <div
+                        key={card.id}
+                        className="flex items-center justify-between p-3 border rounded-lg"
+                      >
+                        <div className="flex items-center gap-3">
+                          <CreditCard className="w-5 h-5 text-gray-500" />
+                          <div>
+                            <div className="font-medium text-gray-900 dark:text-gray-100">
+                              {card.cardName}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              {card.cardType.replace("-", " ")}
+                            </div>
+                          </div>
+                        </div>
+                        <Badge
+                          variant={
+                            card.status === "active" ? "default" : "secondary"
+                          }
+                        >
+                          {getStatusText(card.status)}
+                        </Badge>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
 
               <Card className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
                 <CardHeader>
@@ -273,9 +457,15 @@ const CardPage = ({ user }: CardPageProps) => {
                     <Settings className="w-4 h-4 mr-2" />
                     Card Settings & Limits
                   </Button>
-                  <Button className="w-full justify-start" variant="outline">
-                    <CreditCard className="w-4 h-4 mr-2" />
-                    Request New Card
+                  <Button
+                    asChild
+                    className="w-full justify-start"
+                    variant="outline"
+                  >
+                    <Link href="/dashboard/card/request">
+                      <CreditCard className="w-4 h-4 mr-2" />
+                      Request New Card
+                    </Link>
                   </Button>
                 </CardContent>
               </Card>

@@ -41,6 +41,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             url: "/admin/users",
             isActive: pathname === "/admin/users",
           },
+          {
+            title: "Cards",
+            url: "/admin/cards",
+            isActive: pathname === "/admin/cards",
+          },
         ],
       },
     ],

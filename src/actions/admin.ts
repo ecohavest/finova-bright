@@ -1,11 +1,11 @@
 "use server";
 
 import { auth } from "@/lib/auth";
-import { balance, accountInfo, transaction } from "@/db/schema";
+import { balance, accountInfo, transaction, card, user } from "@/db/schema";
 import db from "@/db";
 import { serverAuth } from "@/lib/server-auth";
 import { headers } from "next/headers";
-import { eq } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 
 const generateAccountNumber = () => {
   const timestamp = Date.now().toString().slice(-6);
@@ -13,6 +13,31 @@ const generateAccountNumber = () => {
     .toString()
     .padStart(3, "0");
   return `ACC${timestamp}${random}`;
+};
+
+const generateCardNumber = () => {
+  const timestamp = Date.now().toString().slice(-8);
+  const random = Math.floor(Math.random() * 10000)
+    .toString()
+    .padStart(4, "0");
+  return `**** **** **** ${timestamp}${random}`;
+};
+
+const generateCVV = () => {
+  return Math.floor(Math.random() * 900 + 100).toString();
+};
+
+const generateExpiryDate = () => {
+  const currentDate = new Date();
+  const expiryDate = new Date(
+    currentDate.getFullYear() + 4,
+    currentDate.getMonth(),
+    currentDate.getDate()
+  );
+  return expiryDate.toLocaleDateString("en-US", {
+    month: "2-digit",
+    year: "2-digit",
+  });
 };
 
 export const createUser = async (data: {
@@ -131,6 +156,237 @@ export const getUser = async (id: string) => {
   return userInfo;
 };
 
+export const getAllCardRequests = async () => {
+  const adminUser = await serverAuth();
+  if (!adminUser || adminUser.role !== "admin") {
+    throw new Error("Unauthorized");
+  }
+
+  const cardRequests = await db
+    .select({
+      id: card.id,
+      cardType: card.cardType,
+      cardName: card.cardName,
+      status: card.status,
+      paymentStatus: card.paymentStatus,
+      price: card.price,
+      paymentReference: card.paymentReference,
+      adminNotes: card.adminNotes,
+      createdAt: card.createdAt,
+      issuedAt: card.issuedAt,
+      userId: card.userId,
+      userName: user.name,
+      userEmail: user.email,
+    })
+    .from(card)
+    .leftJoin(user, eq(card.userId, user.id))
+    .orderBy(desc(card.createdAt));
+
+  return cardRequests;
+};
+
+export const getPendingCardRequests = async () => {
+  const adminUser = await serverAuth();
+  if (!adminUser || adminUser.role !== "admin") {
+    throw new Error("Unauthorized");
+  }
+
+  const pendingRequests = await db
+    .select({
+      id: card.id,
+      cardType: card.cardType,
+      cardName: card.cardName,
+      status: card.status,
+      paymentStatus: card.paymentStatus,
+      price: card.price,
+      paymentReference: card.paymentReference,
+      adminNotes: card.adminNotes,
+      createdAt: card.createdAt,
+      userId: card.userId,
+      userName: user.name,
+      userEmail: user.email,
+    })
+    .from(card)
+    .leftJoin(user, eq(card.userId, user.id))
+    .where(eq(card.status, "pending"))
+    .orderBy(desc(card.createdAt));
+
+  return pendingRequests;
+};
+
+export const approveCardRequest = async (
+  cardId: string,
+  adminNotes?: string
+) => {
+  const adminUser = await serverAuth();
+  if (!adminUser || adminUser.role !== "admin") {
+    throw new Error("Unauthorized");
+  }
+
+  try {
+    await db
+      .update(card)
+      .set({
+        status: "approved",
+        adminNotes: adminNotes || null,
+        updatedAt: new Date(),
+      })
+      .where(eq(card.id, cardId));
+
+    return {
+      success: true,
+      message: "Card request approved successfully",
+    };
+  } catch (error) {
+    console.error("Error approving card request:", error);
+    throw new Error("Failed to approve card request");
+  }
+};
+
+export const rejectCardRequest = async (cardId: string, adminNotes: string) => {
+  const adminUser = await serverAuth();
+  if (!adminUser || adminUser.role !== "admin") {
+    throw new Error("Unauthorized");
+  }
+
+  try {
+    await db
+      .update(card)
+      .set({
+        status: "rejected",
+        adminNotes,
+        updatedAt: new Date(),
+      })
+      .where(eq(card.id, cardId));
+
+    return {
+      success: true,
+      message: "Card request rejected successfully",
+    };
+  } catch (error) {
+    console.error("Error rejecting card request:", error);
+    throw new Error("Failed to reject card request");
+  }
+};
+
+export const issueCard = async (cardId: string, adminNotes?: string) => {
+  const adminUser = await serverAuth();
+  if (!adminUser || adminUser.role !== "admin") {
+    throw new Error("Unauthorized");
+  }
+
+  try {
+    const cardNumber = generateCardNumber();
+    const cvv = generateCVV();
+    const expiryDate = generateExpiryDate();
+
+    await db
+      .update(card)
+      .set({
+        status: "issued",
+        cardNumber,
+        cvv,
+        expiryDate,
+        issuedAt: new Date(),
+        adminNotes: adminNotes || null,
+        updatedAt: new Date(),
+      })
+      .where(eq(card.id, cardId));
+
+    return {
+      success: true,
+      message: "Card issued successfully",
+      cardNumber,
+      cvv,
+      expiryDate,
+    };
+  } catch (error) {
+    console.error("Error issuing card:", error);
+    throw new Error("Failed to issue card");
+  }
+};
+
+export const activateCard = async (cardId: string) => {
+  const adminUser = await serverAuth();
+  if (!adminUser || adminUser.role !== "admin") {
+    throw new Error("Unauthorized");
+  }
+
+  try {
+    await db
+      .update(card)
+      .set({
+        status: "active",
+        updatedAt: new Date(),
+      })
+      .where(eq(card.id, cardId));
+
+    return {
+      success: true,
+      message: "Card activated successfully",
+    };
+  } catch (error) {
+    console.error("Error activating card:", error);
+    throw new Error("Failed to activate card");
+  }
+};
+
+export const suspendCard = async (cardId: string, adminNotes: string) => {
+  const adminUser = await serverAuth();
+  if (!adminUser || adminUser.role !== "admin") {
+    throw new Error("Unauthorized");
+  }
+
+  try {
+    await db
+      .update(card)
+      .set({
+        status: "suspended",
+        adminNotes,
+        updatedAt: new Date(),
+      })
+      .where(eq(card.id, cardId));
+
+    return {
+      success: true,
+      message: "Card suspended successfully",
+    };
+  } catch (error) {
+    console.error("Error suspending card:", error);
+    throw new Error("Failed to suspend card");
+  }
+};
+
+export const getUserCards = async (userId: string) => {
+  const adminUser = await serverAuth();
+  if (!adminUser || adminUser.role !== "admin") {
+    throw new Error("Unauthorized");
+  }
+
+  const userCards = await db
+    .select({
+      id: card.id,
+      cardType: card.cardType,
+      cardName: card.cardName,
+      cardNumber: card.cardNumber,
+      expiryDate: card.expiryDate,
+      status: card.status,
+      price: card.price,
+      paymentStatus: card.paymentStatus,
+      adminNotes: card.adminNotes,
+      createdAt: card.createdAt,
+      issuedAt: card.issuedAt,
+      userName: user.name,
+      userEmail: user.email,
+    })
+    .from(card)
+    .leftJoin(user, eq(card.userId, user.id))
+    .where(eq(card.userId, userId))
+    .orderBy(desc(card.createdAt));
+
+  return userCards;
+};
+
 export const newUserPassword = async (id: string, password: string) => {
   const user = await serverAuth();
   if (!user || user.role !== "admin") {
@@ -160,8 +416,8 @@ export const banUser = async (
   await auth.api.banUser({
     body: {
       userId: id,
-      banReason: reason, // e.g "Spamming"
-      banExpiresIn: expiresIn, //e.g. 60 * 60 * 24 * 7 for 7 days
+      banReason: reason,
+      banExpiresIn: expiresIn,
     },
     headers: await headers(),
   });
