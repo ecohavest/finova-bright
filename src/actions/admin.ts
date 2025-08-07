@@ -5,7 +5,7 @@ import { balance, accountInfo, transaction, card, user } from "@/db/schema";
 import db from "@/db";
 import { serverAuth } from "@/lib/server-auth";
 import { headers } from "next/headers";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 
 const generateAccountNumber = () => {
   const timestamp = Date.now().toString().slice(-6);
