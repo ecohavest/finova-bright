@@ -29,7 +29,7 @@ export default function AdminLayout({
         } as React.CSSProperties
       }
     >
-      <AppSidebar />
+      <AppSidebar variant="inset" />
       <SidebarInset>
       <header className="flex justify-between h-16 shrink-0 items-center gap-2 px-4 sticky top-0 z-10 bg-background/50 backdrop-blur-sm">
           <div className="flex items-center gap-2">
@@ -61,7 +61,7 @@ export default function AdminLayout({
             {/* <ModeToggle /> */}
           </div>
         </header>
-        <section>{children}</section>
+        <section className="container mx-auto px-4">{children}</section>
       </SidebarInset>
     </SidebarProvider>
   );

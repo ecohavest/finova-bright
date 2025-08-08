@@ -8,10 +8,12 @@ import {
   transaction,
   card,
   cardTypeEnum,
+  kyc,
 } from "@/db/schema";
 import { eq, desc, and } from "drizzle-orm";
 import { serverAuth } from "@/lib/server-auth";
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 
 export async function getUserAccountInfo() {
   const currentUser = await serverAuth();
@@ -316,4 +318,76 @@ export async function getTransferReceipt(reference: string) {
     .limit(1);
 
   return transactionRecord[0] || null;
+}
+
+const kycSchema = z.object({
+  firstName: z.string().min(1),
+  lastName: z.string().min(1),
+  dateOfBirth: z.string().min(1),
+  addressLine1: z.string().min(1),
+  addressLine2: z.string().optional().nullable(),
+  city: z.string().min(1),
+  state: z.string().min(1),
+  postalCode: z.string().min(1),
+  country: z.string().min(1),
+  documentType: z.string().min(1),
+  documentNumber: z.string().min(1),
+});
+
+export async function getUserKyc() {
+  const currentUser = await serverAuth();
+  if (!currentUser) {
+    throw new Error("Not authenticated");
+  }
+
+  const [record] = await db
+    .select()
+    .from(kyc)
+    .where(eq(kyc.userId, currentUser.id))
+    .limit(1);
+
+  return record || null;
+}
+
+export async function submitKyc(payload: z.infer<typeof kycSchema>) {
+  const currentUser = await serverAuth();
+  if (!currentUser) {
+    throw new Error("Not authenticated");
+  }
+
+  const data = kycSchema.parse(payload);
+  const id = crypto.randomUUID();
+
+  const [existing] = await db
+    .select()
+    .from(kyc)
+    .where(eq(kyc.userId, currentUser.id))
+    .limit(1);
+
+  if (existing) {
+    await db
+      .update(kyc)
+      .set({
+        ...data,
+        status: "pending",
+        submittedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(kyc.userId, currentUser.id));
+  } else {
+    await db.insert(kyc).values({
+      id,
+      userId: currentUser.id,
+      ...data,
+      status: "pending",
+      submittedAt: new Date(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+  }
+
+  revalidatePath("/dashboard");
+  revalidatePath("/dashboard/profile/kyc");
+
+  return { success: true } as const;
 }

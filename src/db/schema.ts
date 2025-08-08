@@ -121,6 +121,13 @@ export const cardStatusEnum = pgEnum("card_status", [
   "expired",
 ]);
 
+export const kycStatusEnum = pgEnum("kyc_status", [
+  "unsubmitted",
+  "pending",
+  "approved",
+  "rejected",
+]);
+
 export const balance = pgTable("balance", {
   id: text("id").primaryKey(),
   userId: text("user_id")
@@ -132,6 +139,37 @@ export const balance = pgTable("balance", {
   currency: text("currency")
     .$defaultFn(() => "USD")
     .notNull(),
+  createdAt: timestamp("created_at")
+    .$defaultFn(() => /* @__PURE__ */ new Date())
+    .notNull(),
+  updatedAt: timestamp("updated_at")
+    .$defaultFn(() => /* @__PURE__ */ new Date())
+    .notNull(),
+});
+
+export const kyc = pgTable("kyc", {
+  id: text("id").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .unique()
+    .references(() => user.id, { onDelete: "cascade" }),
+  firstName: text("first_name").notNull(),
+  lastName: text("last_name").notNull(),
+  dateOfBirth: text("date_of_birth").notNull(),
+  addressLine1: text("address_line1").notNull(),
+  addressLine2: text("address_line2"),
+  city: text("city").notNull(),
+  state: text("state").notNull(),
+  postalCode: text("postal_code").notNull(),
+  country: text("country").notNull(),
+  documentType: text("document_type").notNull(),
+  documentNumber: text("document_number").notNull(),
+  status: kycStatusEnum("status")
+    .$defaultFn(() => "pending")
+    .notNull(),
+  adminNotes: text("admin_notes"),
+  submittedAt: timestamp("submitted_at"),
+  reviewedAt: timestamp("reviewed_at"),
   createdAt: timestamp("created_at")
     .$defaultFn(() => /* @__PURE__ */ new Date())
     .notNull(),
@@ -196,6 +234,7 @@ export const card = pgTable("card", {
 export const userRelations = relations(user, ({ one, many }) => ({
   accountInfo: one(accountInfo),
   balance: one(balance),
+  kyc: one(kyc),
   transactions: many(transaction),
   sentTransactions: many(transaction, { relationName: "sender" }),
   cards: many(card),
@@ -230,6 +269,13 @@ export const transactionRelations = relations(transaction, ({ one }) => ({
 export const cardRelations = relations(card, ({ one }) => ({
   user: one(user, {
     fields: [card.userId],
+    references: [user.id],
+  }),
+}));
+
+export const kycRelations = relations(kyc, ({ one }) => ({
+  user: one(user, {
+    fields: [kyc.userId],
     references: [user.id],
   }),
 }));

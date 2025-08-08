@@ -6,6 +6,7 @@ import {
   CreditCard,
   ArrowUpRight,
   ArrowDownLeft,
+  UserCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -30,6 +31,11 @@ const navItems = [
     href: "/dashboard/send",
     label: "Transfer",
     icon: ArrowUpRight,
+  },
+  {
+    href: "/dashboard/profile",
+    label: "Profile",
+    icon: UserCircle,
   },
 ];
 

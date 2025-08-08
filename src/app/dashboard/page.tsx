@@ -5,6 +5,7 @@ import { ServicesGrid } from "./services-grid";
 import { AccountInfo } from "./account-info";
 import { redirect } from "next/navigation";
 import React from "react";
+import KycInfo from "./kyc-info";
 
 const formatCurrency = (amount: string, currency: string = "USD") => {
   return new Intl.NumberFormat("en-US", {
@@ -52,7 +53,7 @@ const page = async () => {
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-6xl mx-auto">
           <ServicesGrid />
-
+          <KycInfo />
           <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
               Recent Transactions

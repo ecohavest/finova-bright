@@ -1,7 +1,14 @@
 "use server";
 
 import { auth } from "@/lib/auth";
-import { balance, accountInfo, transaction, card, user } from "@/db/schema";
+import {
+  balance,
+  accountInfo,
+  transaction,
+  card,
+  user,
+  kyc,
+} from "@/db/schema";
 import db from "@/db";
 import { serverAuth } from "@/lib/server-auth";
 import { headers } from "next/headers";
@@ -624,4 +631,112 @@ export const seedFirstAdmin = async (data: {
       currency: "USD",
     },
   };
+};
+
+export const getAllKycSubmissions = async () => {
+  const adminUser = await serverAuth();
+  if (!adminUser || adminUser.role !== "admin") {
+    throw new Error("Unauthorized");
+  }
+
+  const records = await db
+    .select({
+      id: kyc.id,
+      userId: kyc.userId,
+      firstName: kyc.firstName,
+      lastName: kyc.lastName,
+      dateOfBirth: kyc.dateOfBirth,
+      addressLine1: kyc.addressLine1,
+      addressLine2: kyc.addressLine2,
+      city: kyc.city,
+      state: kyc.state,
+      postalCode: kyc.postalCode,
+      country: kyc.country,
+      documentType: kyc.documentType,
+      documentNumber: kyc.documentNumber,
+      status: kyc.status,
+      adminNotes: kyc.adminNotes,
+      submittedAt: kyc.submittedAt,
+      reviewedAt: kyc.reviewedAt,
+      createdAt: kyc.createdAt,
+      updatedAt: kyc.updatedAt,
+      userName: user.name,
+      userEmail: user.email,
+    })
+    .from(kyc)
+    .leftJoin(user, eq(kyc.userId, user.id))
+    .orderBy(desc(kyc.createdAt));
+
+  return records;
+};
+
+export const getPendingKycSubmissions = async () => {
+  const adminUser = await serverAuth();
+  if (!adminUser || adminUser.role !== "admin") {
+    throw new Error("Unauthorized");
+  }
+
+  const records = await db
+    .select({
+      id: kyc.id,
+      userId: kyc.userId,
+      firstName: kyc.firstName,
+      lastName: kyc.lastName,
+      documentType: kyc.documentType,
+      documentNumber: kyc.documentNumber,
+      status: kyc.status,
+      submittedAt: kyc.submittedAt,
+      userName: user.name,
+      userEmail: user.email,
+    })
+    .from(kyc)
+    .leftJoin(user, eq(kyc.userId, user.id))
+    .where(eq(kyc.status, "pending"))
+    .orderBy(desc(kyc.createdAt));
+
+  return records;
+};
+
+export const approveKycSubmission = async (
+  kycId: string,
+  adminNotes?: string
+) => {
+  const adminUser = await serverAuth();
+  if (!adminUser || adminUser.role !== "admin") {
+    throw new Error("Unauthorized");
+  }
+
+  await db
+    .update(kyc)
+    .set({
+      status: "approved",
+      adminNotes: adminNotes || null,
+      reviewedAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(eq(kyc.id, kycId));
+
+  return { success: true, message: "KYC approved successfully" } as const;
+};
+
+export const rejectKycSubmission = async (
+  kycId: string,
+  adminNotes: string
+) => {
+  const adminUser = await serverAuth();
+  if (!adminUser || adminUser.role !== "admin") {
+    throw new Error("Unauthorized");
+  }
+
+  await db
+    .update(kyc)
+    .set({
+      status: "rejected",
+      adminNotes,
+      reviewedAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(eq(kyc.id, kycId));
+
+  return { success: true, message: "KYC rejected" } as const;
 };
