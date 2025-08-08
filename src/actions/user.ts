@@ -15,6 +15,14 @@ import { serverAuth } from "@/lib/server-auth";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
+const generateAccountNumber = () => {
+  const timestamp = Date.now().toString().slice(-6);
+  const random = Math.floor(Math.random() * 1000)
+    .toString()
+    .padStart(3, "0");
+  return `ACC${timestamp}${random}`;
+};
+
 export async function getUserAccountInfo() {
   const currentUser = await serverAuth();
   if (!currentUser) {
@@ -388,6 +396,42 @@ export async function submitKyc(payload: z.infer<typeof kycSchema>) {
 
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/profile/kyc");
+
+  return { success: true } as const;
+}
+
+export async function initializeUserAccountOnSignUp() {
+  const currentUser = await serverAuth();
+  if (!currentUser) {
+    throw new Error("Not authenticated");
+  }
+
+  const [existingAccount] = await db
+    .select()
+    .from(accountInfo)
+    .where(eq(accountInfo.userId, currentUser.id))
+    .limit(1);
+
+  if (existingAccount) {
+    return { success: true } as const;
+  }
+
+  const accountNumber = generateAccountNumber();
+  const accountInfoId = crypto.randomUUID();
+  const balanceId = crypto.randomUUID();
+
+  await db.insert(accountInfo).values({
+    id: accountInfoId,
+    userId: currentUser.id,
+    accountNumber,
+  });
+
+  await db.insert(balance).values({
+    id: balanceId,
+    userId: currentUser.id,
+    amount: "0",
+    currency: "USD",
+  });
 
   return { success: true } as const;
 }

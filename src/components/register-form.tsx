@@ -13,15 +13,17 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Image from "next/image";
+import { initializeUserAccountOnSignUp } from "@/actions/user";
 
-const loginSchema = z.object({
+const registerSchema = z.object({
+  name: z.string().min(1, "Name is required"),
   email: z.string().email("Invalid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),
 });
 
-type LoginFormData = z.infer<typeof loginSchema>;
+type RegisterFormData = z.infer<typeof registerSchema>;
 
-export function LoginForm({
+export function RegisterForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
@@ -32,27 +34,31 @@ export function LoginForm({
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<LoginFormData>({
-    resolver: zodResolver(loginSchema),
+  } = useForm<RegisterFormData>({
+    resolver: zodResolver(registerSchema),
   });
 
-  const onSubmit = async (data: LoginFormData) => {
+  const onSubmit = async (data: RegisterFormData) => {
     setIsLoading(true);
 
-    await authClient.signIn.email(
+    await authClient.signUp.email(
       {
         email: data.email,
         password: data.password,
+        name: data.name,
       },
       {
-        onSuccess: () => {
-          toast.success("Login successful", {
+        onSuccess: async () => {
+          try {
+            await initializeUserAccountOnSignUp();
+          } catch {}
+          toast.success("Registration successful", {
             description: "Redirecting to dashboard...",
           });
           router.push("/dashboard");
         },
         onError: (error) => {
-          toast.error("Login failed", {
+          toast.error("Registration failed", {
             description: error.error.message,
           });
         },
@@ -70,11 +76,22 @@ export function LoginForm({
             <div className="flex flex-col gap-6">
               <div className="flex flex-col items-center text-center">
                 <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">
-                  Welcome back
+                  Create an account
                 </h1>
                 <p className="text-slate-600 dark:text-slate-400 text-balance">
-                  Access your secure banking portal
+                  Access your secure banking portal and start managing your
+                  finances
                 </p>
+                <p className="text-sm text-muted-foreground">
+                  Please fill in the form below to create an account.
+                </p>
+              </div>
+              <div className="grid gap-3">
+                <Label htmlFor="name">Name</Label>
+                <Input id="name" placeholder="John Doe" {...register("name")} />
+                {errors.name && (
+                  <p className="text-sm text-red-500">{errors.name.message}</p>
+                )}
               </div>
               <div className="grid gap-3">
                 <Label htmlFor="email">Email</Label>
@@ -109,12 +126,12 @@ export function LoginForm({
                 className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-2.5 shadow-lg"
                 disabled={isLoading}
               >
-                {isLoading ? "Logging in..." : "Login"}
+                {isLoading ? "Registering..." : "Register"}
               </Button>
               <div className="text-center text-sm">
-                Don&apos;t have an account?{" "}
-                <a href="/register" className="underline underline-offset-4">
-                  Register
+                Already have an account?{" "}
+                <a href="/login" className="underline underline-offset-4">
+                  Login
                 </a>
               </div>
             </div>
