@@ -136,7 +136,7 @@ export function ServicesGrid() {
         <ServiceButton
           href="/dashboard/card"
           icon={CreditCard}
-          title="Finova Cards"
+          title="Swift Cards"
           // onLoading={handleServiceClick}
         />
         <ServiceButton
@@ -196,25 +196,25 @@ export function ServicesGrid() {
         <ServiceButton
           href="/dashboard/alerts"
           icon={Mail}
-          title="Finova Alerts"
+          title="Swift Alerts"
           onLoading={handleServiceClick}
         />
         <ServiceButton
           href="/dashboard/loans"
           icon={DollarSign}
-          title="Finova Loans"
+          title="Swift Loans"
           onLoading={handleServiceClick}
         />
         <ServiceButton
           href="/dashboard/investments"
           icon={TrendingUp}
-          title="Finova Investments"
+          title="Swift Investments"
           onLoading={handleServiceClick}
         />
         <ServiceButton
           href="/dashboard/support"
           icon={MessageSquare}
-          title="Finova Support"
+          title="Swift Support"
           onLoading={handleServiceClick}
         />
       </div>

@@ -334,7 +334,7 @@ export function TransactionsTable() {
       <body>
         <div class="receipt-container">
           <div class="header">
-            <div class="company-name">Finova Bright Bank</div>
+            <div class="company-name">Swift network online bank</div>
             <div class="receipt-title">Transaction Receipt</div>
           </div>
           
@@ -411,7 +411,7 @@ export function TransactionsTable() {
           </div>
           
           <div class="footer">
-            <p>Thank you for using Finova Bright Bank</p>
+            <p>Thank you for using Swift network online bank</p>
             <p>This is a computer-generated receipt</p>
             <p>Printed on ${new Date().toLocaleString()}</p>
           </div>

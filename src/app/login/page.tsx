@@ -30,7 +30,7 @@ export default async function LoginPage() {
             </svg>
           </div>
           <h1 className="text-3xl lg:text-5xl font-bold bg-gradient-to-r from-slate-900 via-blue-800 to-indigo-800 dark:from-slate-100 dark:via-blue-200 dark:to-indigo-200 bg-clip-text text-transparent tracking-tight mb-2">
-            Finova Bright Bank
+            Swift network online bank
           </h1>
           <p className="text-slate-600 dark:text-slate-400 text-sm lg:text-base font-medium">
             Secure • Trusted • Excellence in Banking

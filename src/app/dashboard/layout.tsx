@@ -9,7 +9,7 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
       <header className="flex justify-between h-16 shrink-0 items-center gap-2 px-4 sticky top-0 z-50 bg-blue-900 dark:bg-blue-950 border-b border-blue-800 dark:border-blue-900">
         <div className="flex items-center gap-2">
           <h1 className="text-md lg:text-2xl font-bold tracking-tight text-white">
-            Finova Bright <span className="hidden lg:inline">Bank</span>
+            Swift network <span className="hidden lg:inline">Bank</span>
           </h1>
           <Separator
             orientation="vertical"
