@@ -117,19 +117,19 @@ export function ServicesGrid() {
     <>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4 mb-8">
         <ServiceButton
-          href="/dashboard/send"
+          href="/dashboard/send/wire-transfer"
           icon={Globe}
           title="Wire Transfer"
           // onLoading={handleServiceClick}
         />
         <ServiceButton
-          href="/dashboard/send"
+          href="/dashboard/send/local-transfer"
           icon={ArrowUpDown}
           title="Local Transfer"
           // onLoading={handleServiceClick}
         />
         <ServiceButton
-          href="/dashboard/send"
+          href="/dashboard/send/internal-transfer"
           icon={Send}
           title="Internal Transfer"
         />

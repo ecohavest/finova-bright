@@ -13,7 +13,7 @@ interface TransferReceipt {
   timestamp: Date;
 }
 
-const InternalTransferPage = () => {
+const InternalTransferPage = ({ userHasCards }: { userHasCards: boolean }) => {
   const [receipt, setReceipt] = useState<TransferReceipt | null>(null);
 
   const handleTransferComplete = (transferReceipt: TransferReceipt) => {
@@ -45,7 +45,10 @@ const InternalTransferPage = () => {
             </div>
           ) : (
             <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
-              <TransferForm onTransferComplete={handleTransferComplete} />
+              <TransferForm
+                onTransferComplete={handleTransferComplete}
+                userHasCards={userHasCards}
+              />
             </div>
           )}
         </div>

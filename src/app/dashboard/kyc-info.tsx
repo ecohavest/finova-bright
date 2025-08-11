@@ -11,7 +11,8 @@ const KycInfo = async () => {
   const kyc = await getUserKyc();
 
   const status = kyc?.status ?? "unsubmitted";
-  console.log(kyc);
+
+  if (kyc?.status === "approved") return null;
 
   return (
     <>
