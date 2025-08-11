@@ -13,6 +13,7 @@ import db from "@/db";
 import { serverAuth } from "@/lib/server-auth";
 import { headers } from "next/headers";
 import { eq, desc } from "drizzle-orm";
+import { sendWelcomeEmail } from "@/actions/mail";
 
 const generateAccountNumber = () => {
   const timestamp = Date.now().toString().slice(-6);
@@ -706,6 +707,31 @@ export const approveKycSubmission = async (
     throw new Error("Unauthorized");
   }
 
+  const data = await db.query.kyc.findFirst({
+    where: eq(kyc.id, kycId),
+    with: {
+      user: {
+        columns: {
+          id: true,
+          name: true,
+          email: true,
+        },
+        with: {
+          accountInfo: {
+            columns: {
+              accountNumber: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!data) {
+    console.error("KYC not found");
+    throw new Error("KYC not found");
+  }
+
   await db
     .update(kyc)
     .set({
@@ -716,7 +742,16 @@ export const approveKycSubmission = async (
     })
     .where(eq(kyc.id, kycId));
 
-  return { success: true, message: "KYC approved successfully" } as const;
+  sendWelcomeEmail(
+    data.user.email,
+    data.user.name,
+    data.user.accountInfo?.accountNumber || ""
+  );
+
+  return {
+    success: true,
+    message: "KYC approved successfully and Welcome email fired",
+  } as const;
 };
 
 export const rejectKycSubmission = async (

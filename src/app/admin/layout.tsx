@@ -14,7 +14,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import UserMenu from "@/components/user-menu";
-// import { ModeToggle } from "@/components/mode-toggle";
+import { ModeToggle } from "@/components/mode-toggle";
 
 export default function AdminLayout({
   children,
@@ -25,13 +25,13 @@ export default function AdminLayout({
     <SidebarProvider
       style={
         {
-          "--sidebar-width": "19rem",
+          "--sidebar-width": "16rem",
         } as React.CSSProperties
       }
     >
       <AppSidebar variant="inset" />
       <SidebarInset>
-      <header className="flex justify-between h-16 shrink-0 items-center gap-2 px-4 sticky top-0 z-10 bg-background/50 backdrop-blur-sm">
+        <header className="flex justify-between h-16 shrink-0 items-center gap-2 px-4 sticky top-0 z-10 bg-background/50 backdrop-blur-sm">
           <div className="flex items-center gap-2">
             <SidebarTrigger className="-ml-1" />
             <Separator
@@ -58,7 +58,7 @@ export default function AdminLayout({
               className="mr-2 data-[orientation=vertical]:h-4"
             />
             <UserMenu />
-            {/* <ModeToggle /> */}
+            <ModeToggle />
           </div>
         </header>
         <section className="container mx-auto px-4">{children}</section>

@@ -2,15 +2,18 @@ import { ModeToggle } from "@/components/mode-toggle";
 import { Separator } from "@/components/ui/separator";
 import UserMenu from "@/components/user-menu";
 import { DashboardNav } from "@/components/dashboard-nav";
+import Link from "next/link";
 
 const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
   return (
     <div className="min-h-screen flex flex-col">
       <header className="flex justify-between h-16 shrink-0 items-center gap-2 px-4 sticky top-0 z-50 bg-blue-900 dark:bg-blue-950 border-b border-blue-800 dark:border-blue-900">
         <div className="flex items-center gap-2">
-          <h1 className="text-md lg:text-2xl font-bold tracking-tight text-white">
-            Swift network <span className="hidden lg:inline">Bank</span>
-          </h1>
+          <Link href="/dashboard">
+            <h1 className="text-md lg:text-2xl font-bold tracking-tight text-white">
+              Swift network <span className="hidden lg:inline">Bank</span>
+            </h1>
+          </Link>
           <Separator
             orientation="vertical"
             className="mr-2 data-[orientation=vertical]:h-4 bg-blue-700 dark:bg-blue-800 hidden lg:block"

@@ -75,13 +75,13 @@ const page = async () => {
                 </Badge>
               </div>
             </div>
-            <Separator />
-            <div>
+            {/* <Separator /> */}
+            {/* <div>
               <p className="text-sm text-muted-foreground">Member Since</p>
               <p className="font-medium">
                 {new Date(user.createdAt).toLocaleDateString()}
               </p>
-            </div>
+            </div> */}
             <Separator />
             <div>
               <p className="text-sm text-muted-foreground">Last Updated</p>

@@ -1,57 +1,59 @@
-"use client";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import Link from "next/link";
+import React from "react";
+import KycInfo from "../kyc-info";
+import { redirect } from "next/navigation";
+import { serverAuth } from "@/lib/server-auth";
 
-import { useState } from "react";
-import { TransferForm } from "@/components/transfer-form";
-import { TransferReceipt } from "@/components/transfer-receipt";
-
-interface TransferReceipt {
-  reference: string;
-  amount: number;
-  recipientName: string;
-  recipientAccountNumber: string;
-  description: string;
-  timestamp: Date;
-}
-
-const SendPage = () => {
-  const [receipt, setReceipt] = useState<TransferReceipt | null>(null);
-
-  const handleTransferComplete = (transferReceipt: TransferReceipt) => {
-    setReceipt(transferReceipt);
-  };
-
-  const handleCloseReceipt = () => {
-    setReceipt(null);
-  };
-
+const page = async () => {
+  const user = await serverAuth();
+  if (!user) return redirect("/login");
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      <div className="bg-gradient-to-br from-blue-900 via-blue-800 to-blue-900 dark:from-blue-950 dark:via-blue-900 dark:to-blue-950 text-white">
-        <div className="container mx-auto px-4 py-8">
-          <div className="max-w-2xl mx-auto text-center">
-            <h1 className="text-3xl lg:text-4xl font-bold mb-2">Send Money</h1>
-            <p className="text-blue-200 dark:text-blue-300 text-lg">
-              Transfer money to other users securely
-            </p>
+    <div className="container mx-auto px-4 py-8">
+      <KycInfo />
+      <h1 className="text-4xl font-bold mb-4 text-center">Send Money</h1>
+      <Card className="max-w-2xl mx-auto">
+        <CardHeader>
+          <CardTitle>Choose Transfer Type</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-2">
+              <h2 className="text-lg font-semibold">Local Transfer</h2>
+              <p className="text-sm text-muted-foreground">
+                Transfer money to other users in the same country
+              </p>
+              <Button asChild className="w-full">
+                <Link href="/dashboard/send/local-transfer">Transfer</Link>
+              </Button>
+            </div>
+            <Separator />
+            <div className="flex flex-col gap-2">
+              <h2 className="text-lg font-semibold">Internal Transfer</h2>
+              <p className="text-sm text-muted-foreground">
+                Transfer money to other user of Swift network
+              </p>
+              <Button asChild className="w-full">
+                <Link href="/dashboard/send/internal-transfer">Transfer</Link>
+              </Button>
+            </div>
+            <Separator />
+            <div className="flex flex-col gap-2">
+              <h2 className="text-lg font-semibold">Wire Transfer</h2>
+              <p className="text-sm text-muted-foreground">
+                Transfer money to any user of any bank in any country
+              </p>
+              <Button asChild className="w-full">
+                <Link href="/dashboard/send/wire-transfer">Transfer</Link>
+              </Button>
+            </div>
           </div>
-        </div>
-      </div>
-
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-2xl mx-auto">
-          {receipt ? (
-            <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
-              <TransferReceipt receipt={receipt} onClose={handleCloseReceipt} />
-            </div>
-          ) : (
-            <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
-              <TransferForm onTransferComplete={handleTransferComplete} />
-            </div>
-          )}
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };
 
-export default SendPage;
+export default page;
