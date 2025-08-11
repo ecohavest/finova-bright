@@ -10,8 +10,14 @@ import { Badge } from "@/components/ui/badge";
 import { Check, CreditCard, AlertTriangle, Shield } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { CardType } from "./request-card";
-import { createCardRequest, confirmCardPayment } from "@/actions/user";
+import {
+  createCardRequest,
+  confirmCardPayment,
+  getActivePaymentAccounts,
+} from "@/actions/user";
 import { useRouter } from "next/navigation";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 
 const RequestDialog = ({
   onClose,
@@ -34,6 +40,19 @@ const RequestDialog = ({
   const [paymentConfirmed, setPaymentConfirmed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [cardRequestId, setCardRequestId] = useState<string | null>(null);
+  const [paymentAccounts, setPaymentAccounts] = useState<
+    Array<{
+      id: string;
+      type: "bank" | "paypal" | "crypto";
+      label: string;
+      currency: string | null;
+      details: Record<string, string>;
+      instructions: string | null;
+    }>
+  >([]);
+  const [selectedPaymentAccountId, setSelectedPaymentAccountId] = useState<
+    string | null
+  >(null);
   const card = cards.find((card) => card.id === selectedCard);
   const router = useRouter();
   const formatCurrency = (amount: number) => {
@@ -73,6 +92,19 @@ const RequestDialog = ({
     };
   }, [showPayment, paymentConfirmed]);
 
+  useEffect(() => {
+    const loadPaymentAccounts = async () => {
+      try {
+        const accounts = await getActivePaymentAccounts();
+        setPaymentAccounts(accounts);
+        if (accounts.length > 0) setSelectedPaymentAccountId(accounts[0].id);
+      } catch (e) {
+        console.error("Failed to load payment accounts", e);
+      }
+    };
+    loadPaymentAccounts();
+  }, []);
+
   const handleConfirmRequest = async () => {
     if (!card) return;
 
@@ -84,9 +116,8 @@ const RequestDialog = ({
 
       const result = await createCardRequest(
         card.id,
-        card.name,
-        card.price,
-        paymentReference
+        paymentReference,
+        selectedPaymentAccountId || undefined
       );
 
       if (result.success) {
@@ -136,6 +167,109 @@ const RequestDialog = ({
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
+            <div className="space-y-3">
+              <h4 className="font-semibold">Choose Payment Method</h4>
+              <RadioGroup
+                value={selectedPaymentAccountId || undefined}
+                onValueChange={(v) => setSelectedPaymentAccountId(v)}
+                className="grid gap-3"
+              >
+                {paymentAccounts.map((pa) => (
+                  <div
+                    key={pa.id}
+                    className={`border rounded-md p-3 cursor-pointer ${
+                      selectedPaymentAccountId === pa.id
+                        ? "border-blue-500"
+                        : "border-gray-200 dark:border-gray-800"
+                    }`}
+                    onClick={() => setSelectedPaymentAccountId(pa.id)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <RadioGroupItem value={pa.id} id={`pa-${pa.id}`} />
+                        <Label
+                          htmlFor={`pa-${pa.id}`}
+                          className="cursor-pointer"
+                        >
+                          {pa.label} ({pa.type.toUpperCase()})
+                        </Label>
+                      </div>
+                    </div>
+                    <div className="mt-2 text-sm text-gray-700 dark:text-gray-300 space-y-1">
+                      {pa.type === "bank" && (
+                        <>
+                          {pa.details.bankName && (
+                            <div>
+                              Bank: <strong>{pa.details.bankName}</strong>
+                            </div>
+                          )}
+                          {pa.details.accountName && (
+                            <div>
+                              Account Name:{" "}
+                              <strong>{pa.details.accountName}</strong>
+                            </div>
+                          )}
+                          {pa.details.accountNumber && (
+                            <div>
+                              Account Number:{" "}
+                              <strong>{pa.details.accountNumber}</strong>
+                            </div>
+                          )}
+                          {pa.details.routingNumber && (
+                            <div>
+                              Routing Number:{" "}
+                              <strong>{pa.details.routingNumber}</strong>
+                            </div>
+                          )}
+                          {pa.details.swift && (
+                            <div>
+                              SWIFT: <strong>{pa.details.swift}</strong>
+                            </div>
+                          )}
+                          {pa.details.iban && (
+                            <div>
+                              IBAN: <strong>{pa.details.iban}</strong>
+                            </div>
+                          )}
+                        </>
+                      )}
+                      {pa.type === "paypal" && (
+                        <div>
+                          PayPal Email: <strong>{pa.details.email}</strong>
+                        </div>
+                      )}
+                      {pa.type === "crypto" && (
+                        <>
+                          {pa.details.network && (
+                            <div>
+                              Network: <strong>{pa.details.network}</strong>
+                            </div>
+                          )}
+                          {pa.details.address && (
+                            <div>
+                              Address:{" "}
+                              <strong className="break-all">
+                                {pa.details.address}
+                              </strong>
+                            </div>
+                          )}
+                        </>
+                      )}
+                      {pa.instructions && (
+                        <div className="text-xs text-gray-500">
+                          {pa.instructions}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                {paymentAccounts.length === 0 && (
+                  <div className="text-sm text-gray-500">
+                    No payment methods available. Please contact support.
+                  </div>
+                )}
+              </RadioGroup>
+            </div>
             <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
               <div className="flex items-start gap-3">
                 <AlertTriangle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
@@ -152,7 +286,7 @@ const RequestDialog = ({
             <div className="space-y-4">
               <div className="text-center">
                 <div className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-                  {formatCurrency(card.price)}
+                  {formatCurrency(parseFloat(card.price))}
                 </div>
                 <p className="text-gray-600 dark:text-gray-400">
                   Payment for {card.name}
@@ -168,19 +302,6 @@ const RequestDialog = ({
                   <div className="flex items-start gap-2">
                     <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
                     <p>
-                      Transfer the amount to our payment account:{" "}
-                      <strong>1234567890</strong>
-                    </p>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
-                    <p>
-                      Bank: <strong>RTXB Bank</strong>
-                    </p>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
-                    <p>
                       Reference:{" "}
                       <strong>
                         Card-{card.id.toUpperCase()}-{user.id.slice(-6)}
@@ -190,9 +311,25 @@ const RequestDialog = ({
                   <div className="flex items-start gap-2">
                     <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
                     <p>
-                      Amount: <strong>{formatCurrency(card.price)}</strong>
+                      Amount:{" "}
+                      <strong>{formatCurrency(parseFloat(card.price))}</strong>
                     </p>
                   </div>
+                  {selectedPaymentAccountId && (
+                    <div className="flex items-start gap-2">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                      <p>
+                        Pay to:{" "}
+                        <strong>
+                          {
+                            paymentAccounts.find(
+                              (x) => x.id === selectedPaymentAccountId
+                            )?.label
+                          }
+                        </strong>
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -241,14 +378,15 @@ const RequestDialog = ({
       <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            {card.icon}
             Request {card.name}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="flex items-center gap-2 mb-4">
-            <Badge variant={card.type === "credit" ? "default" : "secondary"}>
-              {card.type.toUpperCase()}
+            <Badge
+              variant={card.type.includes("credit") ? "default" : "secondary"}
+            >
+              {card.type.toUpperCase().replace("-", " ")}
             </Badge>
             <span className="text-sm text-gray-600 dark:text-gray-400">
               {card.description}
@@ -268,7 +406,7 @@ const RequestDialog = ({
                       {card.name.toUpperCase()}
                     </div>
                     <div className="text-xs opacity-60">
-                      {card.type.toUpperCase()} CARD
+                      {card.type.toUpperCase().replace("-", " ")} CARD
                     </div>
                   </div>
                   <div className="w-8 h-8 bg-white/20 rounded"></div>
@@ -295,9 +433,11 @@ const RequestDialog = ({
           <div className="space-y-4">
             <div className="text-center">
               <div className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-                {card.price === 0 ? "FREE" : formatCurrency(card.price)}
+                {parseFloat(card.price) === 0
+                  ? "FREE"
+                  : formatCurrency(parseFloat(card.price))}
               </div>
-              {card.price > 0 && (
+              {parseFloat(card.price) > 0 && (
                 <div className="text-sm text-gray-500 dark:text-gray-400">
                   one-time fee
                 </div>

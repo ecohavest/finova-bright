@@ -6,6 +6,8 @@ import {
   accountInfo,
   transaction,
   card,
+  paymentAccount,
+  cardProduct,
   user,
   kyc,
 } from "@/db/schema";
@@ -173,11 +175,9 @@ export const getAllCardRequests = async () => {
   const cardRequests = await db
     .select({
       id: card.id,
-      cardType: card.cardType,
-      cardName: card.cardName,
+      cardProductId: card.cardProductId,
       status: card.status,
       paymentStatus: card.paymentStatus,
-      price: card.price,
       paymentReference: card.paymentReference,
       adminNotes: card.adminNotes,
       createdAt: card.createdAt,
@@ -185,9 +185,13 @@ export const getAllCardRequests = async () => {
       userId: card.userId,
       userName: user.name,
       userEmail: user.email,
+      cardProductName: cardProduct.name,
+      cardProductType: cardProduct.type,
+      cardProductPrice: cardProduct.price,
     })
     .from(card)
     .leftJoin(user, eq(card.userId, user.id))
+    .leftJoin(cardProduct, eq(card.cardProductId, cardProduct.id))
     .orderBy(desc(card.createdAt));
 
   return cardRequests;
@@ -202,20 +206,22 @@ export const getPendingCardRequests = async () => {
   const pendingRequests = await db
     .select({
       id: card.id,
-      cardType: card.cardType,
-      cardName: card.cardName,
+      cardProductId: card.cardProductId,
       status: card.status,
       paymentStatus: card.paymentStatus,
-      price: card.price,
       paymentReference: card.paymentReference,
       adminNotes: card.adminNotes,
       createdAt: card.createdAt,
       userId: card.userId,
       userName: user.name,
       userEmail: user.email,
+      cardProductName: cardProduct.name,
+      cardProductType: cardProduct.type,
+      cardProductPrice: cardProduct.price,
     })
     .from(card)
     .leftJoin(user, eq(card.userId, user.id))
+    .leftJoin(cardProduct, eq(card.cardProductId, cardProduct.id))
     .where(eq(card.status, "pending"))
     .orderBy(desc(card.createdAt));
 
@@ -374,21 +380,23 @@ export const getUserCards = async (userId: string) => {
   const userCards = await db
     .select({
       id: card.id,
-      cardType: card.cardType,
-      cardName: card.cardName,
+      cardProductId: card.cardProductId,
       cardNumber: card.cardNumber,
       expiryDate: card.expiryDate,
       status: card.status,
-      price: card.price,
       paymentStatus: card.paymentStatus,
       adminNotes: card.adminNotes,
       createdAt: card.createdAt,
       issuedAt: card.issuedAt,
       userName: user.name,
       userEmail: user.email,
+      cardProductName: cardProduct.name,
+      cardProductType: cardProduct.type,
+      cardProductPrice: cardProduct.price,
     })
     .from(card)
     .leftJoin(user, eq(card.userId, user.id))
+    .leftJoin(cardProduct, eq(card.cardProductId, cardProduct.id))
     .where(eq(card.userId, userId))
     .orderBy(desc(card.createdAt));
 
@@ -774,4 +782,352 @@ export const rejectKycSubmission = async (
     .where(eq(kyc.id, kycId));
 
   return { success: true, message: "KYC rejected" } as const;
+};
+
+export const seedCardProducts = async () => {
+  const user = await serverAuth();
+  if (!user || user.role !== "admin") {
+    throw new Error("Unauthorized");
+  }
+
+  const existingProducts = await db.query.cardProduct.findMany({
+    limit: 1,
+  });
+
+  if (existingProducts.length > 0) {
+    throw new Error("Card products already exist");
+  }
+
+  const cardProducts = [
+    {
+      id: "classic-debit",
+      name: "Classic Debit",
+      type: "classic-debit" as const,
+      description: "Perfect for everyday spending and ATM withdrawals",
+      price: "10.00",
+      features: JSON.stringify([
+        "Free transactions",
+        "ATM access",
+        "Online shopping",
+      ]),
+      gradient: "from-slate-700 to-slate-900",
+      icon: "CreditCard",
+      dailyLimit: "1000.00",
+      monthlyLimit: "5000.00",
+      withdrawalLimit: "500.00",
+      status: "active" as const,
+      sortOrder: "1",
+    },
+    {
+      id: "premium-debit",
+      name: "Premium Debit",
+      type: "premium-debit" as const,
+      description: "Enhanced features for frequent users",
+      price: "20.00",
+      features: JSON.stringify([
+        "Priority support",
+        "Higher limits",
+        "Travel insurance",
+        "Cashback rewards",
+      ]),
+      gradient: "from-blue-600 to-blue-900",
+      icon: "Zap",
+      dailyLimit: "5000.00",
+      monthlyLimit: "25000.00",
+      withdrawalLimit: "2000.00",
+      status: "active" as const,
+      sortOrder: "2",
+    },
+    {
+      id: "gold-credit",
+      name: "Gold Credit",
+      type: "gold-credit" as const,
+      description: "Build credit while earning rewards",
+      price: "50.00",
+      features: JSON.stringify([
+        "Credit facility",
+        "Rewards program",
+        "Purchase protection",
+        "Extended warranty",
+      ]),
+      gradient: "from-yellow-500 to-yellow-700",
+      icon: "Star",
+      dailyLimit: "10000.00",
+      monthlyLimit: "50000.00",
+      withdrawalLimit: "5000.00",
+      status: "active" as const,
+      sortOrder: "3",
+    },
+    {
+      id: "platinum-credit",
+      name: "Platinum Credit",
+      type: "platinum-credit" as const,
+      description: "Ultimate luxury and convenience",
+      price: "100.00",
+      features: JSON.stringify([
+        "Premium credit line",
+        "Concierge service",
+        "Airport lounge access",
+        "Travel benefits",
+      ]),
+      gradient: "from-purple-600 to-purple-900",
+      icon: "Shield",
+      dailyLimit: null, // No limit
+      monthlyLimit: null, // No limit
+      withdrawalLimit: null, // No limit
+      status: "active" as const,
+      sortOrder: "4",
+    },
+  ];
+
+  await db.insert(cardProduct).values(cardProducts);
+
+  return {
+    success: true,
+    message: "Card products seeded successfully",
+    count: cardProducts.length,
+  };
+};
+
+export const getCardProducts = async () => {
+  const adminUser = await serverAuth();
+  if (!adminUser || adminUser.role !== "admin") {
+    throw new Error("Unauthorized");
+  }
+
+  const products = await db.query.cardProduct.findMany({
+    orderBy: [cardProduct.sortOrder, cardProduct.createdAt],
+  });
+
+  return products;
+};
+
+export const getActiveCardProducts = async () => {
+  const products = await db.query.cardProduct.findMany({
+    where: eq(cardProduct.status, "active"),
+    orderBy: [cardProduct.sortOrder, cardProduct.createdAt],
+  });
+
+  return products;
+};
+
+export const createCardProduct = async (data: {
+  name: string;
+  type: "classic-debit" | "premium-debit" | "gold-credit" | "platinum-credit";
+  description: string;
+  price: string;
+  features: string[];
+  gradient: string;
+  icon: string;
+  dailyLimit?: string | null;
+  monthlyLimit?: string | null;
+  withdrawalLimit?: string | null;
+  sortOrder?: string;
+}) => {
+  const adminUser = await serverAuth();
+  if (!adminUser || adminUser.role !== "admin") {
+    throw new Error("Unauthorized");
+  }
+
+  const id = crypto.randomUUID();
+
+  await db.insert(cardProduct).values({
+    id,
+    name: data.name,
+    type: data.type,
+    description: data.description,
+    price: data.price,
+    features: JSON.stringify(data.features),
+    gradient: data.gradient,
+    icon: data.icon,
+    dailyLimit: data.dailyLimit,
+    monthlyLimit: data.monthlyLimit,
+    withdrawalLimit: data.withdrawalLimit,
+    sortOrder: data.sortOrder || "0",
+    status: "active",
+  });
+
+  return {
+    success: true,
+    message: "Card product created successfully",
+    productId: id,
+  };
+};
+
+export const updateCardProduct = async (
+  productId: string,
+  data: {
+    name?: string;
+    description?: string;
+    price?: string;
+    features?: string[];
+    gradient?: string;
+    icon?: string;
+    dailyLimit?: string | null;
+    monthlyLimit?: string | null;
+    withdrawalLimit?: string | null;
+    sortOrder?: string;
+    status?: "active" | "inactive";
+  }
+) => {
+  const adminUser = await serverAuth();
+  if (!adminUser || adminUser.role !== "admin") {
+    throw new Error("Unauthorized");
+  }
+
+  const updateData: Record<string, unknown> = {
+    updatedAt: new Date(),
+  };
+
+  if (data.name) updateData.name = data.name;
+  if (data.description) updateData.description = data.description;
+  if (data.price) updateData.price = data.price;
+  if (data.features) updateData.features = JSON.stringify(data.features);
+  if (data.gradient) updateData.gradient = data.gradient;
+  if (data.icon) updateData.icon = data.icon;
+  if (data.dailyLimit !== undefined) updateData.dailyLimit = data.dailyLimit;
+  if (data.monthlyLimit !== undefined)
+    updateData.monthlyLimit = data.monthlyLimit;
+  if (data.withdrawalLimit !== undefined)
+    updateData.withdrawalLimit = data.withdrawalLimit;
+  if (data.sortOrder) updateData.sortOrder = data.sortOrder;
+  if (data.status) updateData.status = data.status;
+
+  await db
+    .update(cardProduct)
+    .set(updateData)
+    .where(eq(cardProduct.id, productId));
+
+  return {
+    success: true,
+    message: "Card product updated successfully",
+  };
+};
+
+export const deleteCardProduct = async (productId: string) => {
+  const adminUser = await serverAuth();
+  if (!adminUser || adminUser.role !== "admin") {
+    throw new Error("Unauthorized");
+  }
+
+  // Check if any cards are using this product
+  const existingCards = await db.query.card.findMany({
+    where: eq(card.cardProductId, productId),
+    limit: 1,
+  });
+
+  if (existingCards.length > 0) {
+    throw new Error(
+      "Cannot delete card product that is in use by existing cards"
+    );
+  }
+
+  await db.delete(cardProduct).where(eq(cardProduct.id, productId));
+
+  return {
+    success: true,
+    message: "Card product deleted successfully",
+  };
+};
+
+// Payment Accounts CRUD (bank/wire, paypal, crypto)
+
+export const getPaymentAccounts = async () => {
+  const adminUser = await serverAuth();
+  if (!adminUser || adminUser.role !== "admin") {
+    throw new Error("Unauthorized");
+  }
+
+  const accounts = await db.query.paymentAccount.findMany({
+    orderBy: [paymentAccount.sortOrder, paymentAccount.createdAt],
+  });
+
+  return accounts;
+};
+
+export const getActivePaymentAccounts = async () => {
+  const accounts = await db.query.paymentAccount.findMany({
+    where: eq(paymentAccount.status, "active"),
+    orderBy: [paymentAccount.sortOrder, paymentAccount.createdAt],
+  });
+
+  return accounts;
+};
+
+export const createPaymentAccount = async (data: {
+  type: "bank" | "paypal" | "crypto";
+  label: string;
+  currency?: string;
+  details: Record<string, string>;
+  instructions?: string;
+  sortOrder?: string;
+  status?: "active" | "inactive";
+}) => {
+  const adminUser = await serverAuth();
+  if (!adminUser || adminUser.role !== "admin") {
+    throw new Error("Unauthorized");
+  }
+
+  const id = crypto.randomUUID();
+
+  await db.insert(paymentAccount).values({
+    id,
+    type: data.type,
+    label: data.label,
+    currency: data.currency || "USD",
+    details: JSON.stringify(data.details),
+    instructions: data.instructions || null,
+    sortOrder: data.sortOrder || "0",
+    status: data.status || "active",
+  });
+
+  return { success: true, message: "Payment account created", id } as const;
+};
+
+export const updatePaymentAccount = async (
+  id: string,
+  data: {
+    type?: "bank" | "paypal" | "crypto";
+    label?: string;
+    currency?: string;
+    details?: Record<string, string>;
+    instructions?: string | null;
+    sortOrder?: string;
+    status?: "active" | "inactive";
+  }
+) => {
+  const adminUser = await serverAuth();
+  if (!adminUser || adminUser.role !== "admin") {
+    throw new Error("Unauthorized");
+  }
+
+  const updateData: Record<string, unknown> = {
+    updatedAt: new Date(),
+  };
+  if (data.type) updateData.type = data.type;
+  if (data.label) updateData.label = data.label;
+  if (data.currency) updateData.currency = data.currency;
+  if (data.details) updateData.details = JSON.stringify(data.details);
+  if (data.instructions !== undefined)
+    updateData.instructions = data.instructions;
+  if (data.sortOrder) updateData.sortOrder = data.sortOrder;
+  if (data.status) updateData.status = data.status;
+
+  await db
+    .update(paymentAccount)
+    .set(updateData)
+    .where(eq(paymentAccount.id, id));
+
+  return { success: true, message: "Payment account updated" } as const;
+};
+
+export const deletePaymentAccount = async (id: string) => {
+  const adminUser = await serverAuth();
+  if (!adminUser || adminUser.role !== "admin") {
+    throw new Error("Unauthorized");
+  }
+
+  // Soft check: if any pending cards reference it, allow delete but apps should handle null
+  await db.delete(paymentAccount).where(eq(paymentAccount.id, id));
+  return { success: true, message: "Payment account deleted" } as const;
 };

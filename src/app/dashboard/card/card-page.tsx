@@ -36,15 +36,21 @@ interface CardPageProps {
 
 interface UserCard {
   id: string;
-  cardType: string;
-  cardName: string;
+  cardProductId: string;
   cardNumber: string | null;
   expiryDate: string | null;
   status: string;
-  price: string;
   paymentStatus: string | null;
   createdAt: Date;
   issuedAt: Date | null;
+  cardType: string;
+  cardName: string;
+  price: string;
+  features: string;
+  gradient: string;
+  dailyLimit: string | null;
+  monthlyLimit: string | null;
+  withdrawalLimit: string | null;
 }
 
 const CardPage = ({ user }: CardPageProps) => {
@@ -58,7 +64,7 @@ const CardPage = ({ user }: CardPageProps) => {
     const fetchUserCards = async () => {
       try {
         const cards = await getUserCards();
-        setUserCards(cards);
+        setUserCards(cards as UserCard[]);
 
         if (cards.length === 0) {
           router.push("/dashboard/card/request");
@@ -394,6 +400,39 @@ const CardPage = ({ user }: CardPageProps) => {
                     </label>
                     <div className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">
                       {formatCurrency(user.balanceAmount)}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <label className="text-sm font-medium text-gray-600 dark:text-gray-300">
+                        Daily Limit
+                      </label>
+                      <div className="font-mono text-sm text-gray-900 dark:text-gray-100 mt-1">
+                        {activeCard.dailyLimit
+                          ? formatCurrency(activeCard.dailyLimit)
+                          : "No Limit"}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-600 dark:text-gray-300">
+                        Monthly Limit
+                      </label>
+                      <div className="font-mono text-sm text-gray-900 dark:text-gray-100 mt-1">
+                        {activeCard.monthlyLimit
+                          ? formatCurrency(activeCard.monthlyLimit)
+                          : "No Limit"}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-600 dark:text-gray-300">
+                        Withdrawal Limit
+                      </label>
+                      <div className="font-mono text-sm text-gray-900 dark:text-gray-100 mt-1">
+                        {activeCard.withdrawalLimit
+                          ? formatCurrency(activeCard.withdrawalLimit)
+                          : "No Limit"}
+                      </div>
                     </div>
                   </div>
                 </CardContent>

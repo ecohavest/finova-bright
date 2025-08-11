@@ -121,6 +121,22 @@ export const cardStatusEnum = pgEnum("card_status", [
   "expired",
 ]);
 
+export const paymentAccountTypeEnum = pgEnum("payment_account_type", [
+  "bank",
+  "paypal",
+  "crypto",
+]);
+
+export const paymentAccountStatusEnum = pgEnum("payment_account_status", [
+  "active",
+  "inactive",
+]);
+
+export const cardProductStatusEnum = pgEnum("card_product_status", [
+  "active",
+  "inactive",
+]);
+
 export const kycStatusEnum = pgEnum("kyc_status", [
   "unsubmitted",
   "pending",
@@ -205,20 +221,47 @@ export const transaction = pgTable("transaction", {
     .notNull(),
 });
 
+export const cardProduct = pgTable("card_product", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  type: cardTypeEnum("type").notNull(),
+  description: text("description").notNull(),
+  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+  features: text("features").notNull(), // JSON string array
+  gradient: text("gradient").notNull(),
+  icon: text("icon").notNull(),
+  dailyLimit: decimal("daily_limit", { precision: 10, scale: 2 }),
+  monthlyLimit: decimal("monthly_limit", { precision: 10, scale: 2 }),
+  withdrawalLimit: decimal("withdrawal_limit", { precision: 10, scale: 2 }),
+  status: cardProductStatusEnum("status")
+    .$defaultFn(() => "active")
+    .notNull(),
+  sortOrder: decimal("sort_order", { precision: 3, scale: 0 })
+    .$defaultFn(() => "0")
+    .notNull(),
+  createdAt: timestamp("created_at")
+    .$defaultFn(() => /* @__PURE__ */ new Date())
+    .notNull(),
+  updatedAt: timestamp("updated_at")
+    .$defaultFn(() => /* @__PURE__ */ new Date())
+    .notNull(),
+});
+
 export const card = pgTable("card", {
   id: text("id").primaryKey(),
   userId: text("user_id")
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
-  cardType: cardTypeEnum("card_type").notNull(),
-  cardName: text("card_name").notNull(),
+  cardProductId: text("card_product_id")
+    .notNull()
+    .references(() => cardProduct.id, { onDelete: "restrict" }),
+  paymentAccountId: text("payment_account_id"),
   cardNumber: text("card_number"),
   expiryDate: text("expiry_date"),
   cvv: text("cvv"),
   status: cardStatusEnum("status")
     .$defaultFn(() => "pending")
     .notNull(),
-  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
   paymentReference: text("payment_reference"),
   paymentStatus: text("payment_status").$defaultFn(() => "pending"),
   adminNotes: text("admin_notes"),
@@ -266,10 +309,18 @@ export const transactionRelations = relations(transaction, ({ one }) => ({
   }),
 }));
 
+export const cardProductRelations = relations(cardProduct, ({ many }) => ({
+  cards: many(card),
+}));
+
 export const cardRelations = relations(card, ({ one }) => ({
   user: one(user, {
     fields: [card.userId],
     references: [user.id],
+  }),
+  cardProduct: one(cardProduct, {
+    fields: [card.cardProductId],
+    references: [cardProduct.id],
   }),
 }));
 
@@ -279,3 +330,34 @@ export const kycRelations = relations(kyc, ({ one }) => ({
     references: [user.id],
   }),
 }));
+
+// Payment Accounts that users can send payments to (for card requests, etc.)
+export const paymentAccount = pgTable("payment_account", {
+  id: text("id").primaryKey(),
+  type: paymentAccountTypeEnum("type").notNull(),
+  label: text("label").notNull(),
+  currency: text("currency").$defaultFn(() => "USD"),
+  // JSON string containing type-specific details (e.g. bank/wire fields, paypal email, crypto address/network)
+  details: text("details").notNull(),
+  instructions: text("instructions"),
+  status: paymentAccountStatusEnum("status")
+    .$defaultFn(() => "active")
+    .notNull(),
+  sortOrder: decimal("sort_order", { precision: 4, scale: 0 })
+    .$defaultFn(() => "0")
+    .notNull(),
+  createdAt: timestamp("created_at")
+    .$defaultFn(() => /* @__PURE__ */ new Date())
+    .notNull(),
+  updatedAt: timestamp("updated_at")
+    .$defaultFn(() => /* @__PURE__ */ new Date())
+    .notNull(),
+});
+
+export const paymentAccountRelations = relations(
+  paymentAccount,
+  ({ many }) => ({
+    // loose relation via card.paymentAccountId (nullable)
+    // We don't add a strict foreign key to avoid blocking deletions; logic handled in code
+  })
+);

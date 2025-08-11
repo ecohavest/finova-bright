@@ -17,7 +17,6 @@ import {
 } from "@/components/ui/sidebar";
 import { usePathname } from "next/navigation";
 
-
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
   const data = {
@@ -50,6 +49,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             title: "KYC",
             url: "/admin/kyc",
             isActive: pathname === "/admin/kyc",
+          },
+          {
+            title: "Card Products",
+            url: "/admin/card-products",
+            isActive: pathname === "/admin/card-products",
+          },
+          {
+            title: "Payment Methods",
+            url: "/admin/payment-methods",
+            isActive: pathname === "/admin/payment-methods",
           },
         ],
       },

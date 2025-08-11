@@ -70,11 +70,9 @@ import { toast } from "sonner";
 
 interface CardRequest {
   id: string;
-  cardType: string;
-  cardName: string;
+  cardProductId: string;
   status: string;
   paymentStatus: string | null;
-  price: string;
   paymentReference: string | null;
   adminNotes: string | null;
   createdAt: Date;
@@ -82,6 +80,9 @@ interface CardRequest {
   userId: string;
   userName: string | null;
   userEmail: string | null;
+  cardProductName: string | null;
+  cardProductType: string | null;
+  cardProductPrice: string | null;
 }
 
 const CardManagement = () => {
@@ -219,7 +220,10 @@ const CardManagement = () => {
       false ||
       request.userEmail?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       false ||
-      request.cardName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      request.cardProductName
+        ?.toLowerCase()
+        .includes(searchTerm.toLowerCase()) ||
+      false ||
       request.paymentReference
         ?.toLowerCase()
         .includes(searchTerm.toLowerCase()) ||
@@ -322,12 +326,15 @@ const CardManagement = () => {
                       </TableCell>
                       <TableCell>
                         <div className="space-y-1">
-                          <div className="font-medium">{request.cardName}</div>
+                          <div className="font-medium">
+                            {request.cardProductName || "Unknown Card"}
+                          </div>
                           <div className="text-sm text-gray-500">
-                            {request.cardType.replace("-", " ")}
+                            {request.cardProductType?.replace("-", " ") ||
+                              "Unknown Type"}
                           </div>
                           <div className="text-sm font-mono text-gray-600">
-                            {formatCurrency(request.price)}
+                            {formatCurrency(request.cardProductPrice || "0")}
                           </div>
                         </div>
                       </TableCell>
@@ -466,11 +473,13 @@ const CardManagement = () => {
                     {selectedCard.userEmail || "No email"})
                   </p>
                   <p>
-                    <strong>Card:</strong> {selectedCard.cardName} (
-                    {selectedCard.cardType})
+                    <strong>Card:</strong>{" "}
+                    {selectedCard.cardProductName || "Unknown Card"} (
+                    {selectedCard.cardProductType || "Unknown Type"})
                   </p>
                   <p>
-                    <strong>Price:</strong> {formatCurrency(selectedCard.price)}
+                    <strong>Price:</strong>{" "}
+                    {formatCurrency(selectedCard.cardProductPrice || "0")}
                   </p>
                 </div>
               )}

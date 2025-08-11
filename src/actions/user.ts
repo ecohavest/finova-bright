@@ -7,7 +7,8 @@ import {
   balance,
   transaction,
   card,
-  cardTypeEnum,
+  cardProduct,
+  paymentAccount,
   kyc,
 } from "@/db/schema";
 import { eq, desc, and } from "drizzle-orm";
@@ -83,32 +84,71 @@ export async function getUserCards() {
   const userCards = await db
     .select({
       id: card.id,
-      cardType: card.cardType,
-      cardName: card.cardName,
+      cardProductId: card.cardProductId,
       cardNumber: card.cardNumber,
       expiryDate: card.expiryDate,
       status: card.status,
-      price: card.price,
       paymentStatus: card.paymentStatus,
       createdAt: card.createdAt,
       issuedAt: card.issuedAt,
+      cardType: cardProduct.type,
+      cardName: cardProduct.name,
+      price: cardProduct.price,
+      features: cardProduct.features,
+      gradient: cardProduct.gradient,
+      dailyLimit: cardProduct.dailyLimit,
+      monthlyLimit: cardProduct.monthlyLimit,
+      withdrawalLimit: cardProduct.withdrawalLimit,
     })
     .from(card)
+    .leftJoin(cardProduct, eq(card.cardProductId, cardProduct.id))
     .where(eq(card.userId, currentUser.id))
     .orderBy(desc(card.createdAt));
 
   return userCards;
 }
 
+export async function getActiveCardProducts() {
+  const products = await db.query.cardProduct.findMany({
+    where: eq(cardProduct.status, "active"),
+    orderBy: [cardProduct.sortOrder, cardProduct.createdAt],
+  });
+
+  return products.map((product) => ({
+    ...product,
+    features: JSON.parse(product.features) as string[],
+  }));
+}
+
+export async function getActivePaymentAccounts() {
+  const accounts = await db.query.paymentAccount.findMany({
+    where: eq(paymentAccount.status, "active"),
+    orderBy: [paymentAccount.sortOrder, paymentAccount.createdAt],
+  });
+
+  return accounts.map((a) => ({
+    ...a,
+    details: JSON.parse(a.details) as Record<string, string>,
+  }));
+}
+
 export async function createCardRequest(
-  cardType: string,
-  cardName: string,
-  price: number,
-  paymentReference: string
+  cardProductId: string,
+  paymentReference: string,
+  paymentAccountId?: string
 ) {
   const currentUser = await serverAuth();
   if (!currentUser) {
     throw new Error("Not authenticated");
+  }
+
+  // Verify the card product exists and is active
+  const product = await db.query.cardProduct.findFirst({
+    where: eq(cardProduct.id, cardProductId),
+  });
+
+  if (!product || product.status !== "active") {
+    throw new Error("Card product not found or inactive");
   }
 
   const cardId = crypto.randomUUID();
@@ -117,9 +157,8 @@ export async function createCardRequest(
     await db.insert(card).values({
       id: cardId,
       userId: currentUser.id,
-      cardType: cardType as (typeof cardTypeEnum.enumValues)[number],
-      cardName,
-      price: price.toString(),
+      cardProductId,
+      paymentAccountId: paymentAccountId || null,
       paymentReference,
       paymentStatus: "pending",
       status: "pending",

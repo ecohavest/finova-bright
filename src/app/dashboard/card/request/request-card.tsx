@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -12,80 +12,40 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CreditCard, Zap, Shield, Star, Check } from "lucide-react";
 import RequestDialog from "./request-dialog";
+import { getActiveCardProducts } from "@/actions/user";
 
 export interface CardType {
   id: string;
   name: string;
-  type: "credit" | "debit";
-  price: number;
-  color: string;
+  type: "classic-debit" | "premium-debit" | "gold-credit" | "platinum-credit";
+  price: string;
   gradient: string;
   features: string[];
   description: string;
-  icon: React.ReactNode;
+  icon: string;
+  dailyLimit: string | null;
+  monthlyLimit: string | null;
+  withdrawalLimit: string | null;
+  status: "active" | "inactive";
+  sortOrder: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
-const cardTypes: CardType[] = [
-  {
-    id: "classic-debit",
-    name: "Classic Debit",
-    type: "debit",
-    price: 10,
-    color: "bg-slate-800",
-    gradient: "from-slate-700 to-slate-900",
-    features: ["Free transactions", "ATM access", "Online shopping"],
-    description: "Perfect for everyday spending and ATM withdrawals",
-    icon: <CreditCard className="w-6 h-6" />,
-  },
-  {
-    id: "premium-debit",
-    name: "Premium Debit",
-    type: "debit",
-    price: 20,
-    color: "bg-blue-800",
-    gradient: "from-blue-600 to-blue-900",
-    features: [
-      "Priority support",
-      "Higher limits",
-      "Travel insurance",
-      "Cashback rewards",
-    ],
-    description: "Enhanced features for frequent users",
-    icon: <Zap className="w-6 h-6" />,
-  },
-  {
-    id: "gold-credit",
-    name: "Gold Credit",
-    type: "credit",
-    price: 50,
-    color: "bg-yellow-600",
-    gradient: "from-yellow-500 to-yellow-700",
-    features: [
-      "Credit facility",
-      "Rewards program",
-      "Purchase protection",
-      "Extended warranty",
-    ],
-    description: "Build credit while earning rewards",
-    icon: <Star className="w-6 h-6" />,
-  },
-  {
-    id: "platinum-credit",
-    name: "Platinum Credit",
-    type: "credit",
-    price: 100,
-    color: "bg-purple-800",
-    gradient: "from-purple-600 to-purple-900",
-    features: [
-      "Premium credit line",
-      "Concierge service",
-      "Airport lounge access",
-      "Travel benefits",
-    ],
-    description: "Ultimate luxury and convenience",
-    icon: <Shield className="w-6 h-6" />,
-  },
-];
+const getCardIcon = (iconName: string) => {
+  switch (iconName) {
+    case "CreditCard":
+      return <CreditCard className="w-6 h-6" />;
+    case "Zap":
+      return <Zap className="w-6 h-6" />;
+    case "Star":
+      return <Star className="w-6 h-6" />;
+    case "Shield":
+      return <Shield className="w-6 h-6" />;
+    default:
+      return <CreditCard className="w-6 h-6" />;
+  }
+};
 
 const RequestCard = ({
   user,
@@ -100,6 +60,23 @@ const RequestCard = ({
 }) => {
   const [selectedCard, setSelectedCard] = useState<string | null>(null);
   const [isRequesting, setIsRequesting] = useState(false);
+  const [cardProducts, setCardProducts] = useState<CardType[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchCardProducts = async () => {
+      try {
+        const products = await getActiveCardProducts();
+        setCardProducts(products);
+      } catch (error) {
+        console.error("Error fetching card products:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCardProducts();
+  }, []);
 
   const handleCardRequest = (cardType: CardType) => {
     console.log("Card Request Submitted:", {
@@ -110,7 +87,9 @@ const RequestCard = ({
       userName: user.name,
       requestingPrice: cardType.price,
       formattedPrice:
-        cardType.price === 0 ? "FREE" : formatCurrency(cardType.price),
+        parseFloat(cardType.price) === 0
+          ? "FREE"
+          : formatCurrency(parseFloat(cardType.price)),
     });
     setIsRequesting(true);
   };
@@ -122,13 +101,30 @@ const RequestCard = ({
     }).format(amount);
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 py-8">
+        <div className="container mx-auto px-4">
+          <div className="max-w-7xl mx-auto">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
+              <p className="mt-4 text-gray-600 dark:text-gray-400">
+                Loading card products...
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       {isRequesting && selectedCard && (
         <RequestDialog
           onClose={() => setIsRequesting(false)}
           selectedCard={selectedCard}
-          cards={cardTypes}
+          cards={cardProducts}
           user={user}
         />
       )}
@@ -145,7 +141,7 @@ const RequestCard = ({
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
-              {cardTypes.map((cardType) => (
+              {cardProducts.map((cardType) => (
                 <Card
                   key={cardType.id}
                   className={`cursor-pointer transition-all duration-300 hover:shadow-lg bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 ${
@@ -159,7 +155,7 @@ const RequestCard = ({
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
                         <div className="text-gray-900 dark:text-gray-100">
-                          {cardType.icon}
+                          {getCardIcon(cardType.icon)}
                         </div>
                         <CardTitle className="text-lg text-gray-900 dark:text-gray-100">
                           {cardType.name}
@@ -167,10 +163,12 @@ const RequestCard = ({
                       </div>
                       <Badge
                         variant={
-                          cardType.type === "credit" ? "default" : "secondary"
+                          cardType.type.includes("credit")
+                            ? "default"
+                            : "secondary"
                         }
                       >
-                        {cardType.type.toUpperCase()}
+                        {cardType.type.toUpperCase().replace("-", " ")}
                       </Badge>
                     </div>
                     <CardDescription className="text-gray-600 dark:text-gray-400">
@@ -209,11 +207,11 @@ const RequestCard = ({
                     <div className="space-y-2">
                       <div className="flex justify-between items-center">
                         <span className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                          {cardType.price === 0
+                          {parseFloat(cardType.price) === 0
                             ? "FREE"
-                            : formatCurrency(cardType.price)}
+                            : formatCurrency(parseFloat(cardType.price))}
                         </span>
-                        {cardType.price > 0 && (
+                        {parseFloat(cardType.price) > 0 && (
                           <span className="text-sm text-gray-500 dark:text-gray-400">
                             one-time fee
                           </span>
@@ -265,7 +263,7 @@ const RequestCard = ({
                 </CardHeader>
                 <CardContent>
                   {(() => {
-                    const selected = cardTypes.find(
+                    const selected = cardProducts.find(
                       (card) => card.id === selectedCard
                     );
                     if (!selected) return null;
@@ -315,9 +313,9 @@ const RequestCard = ({
 
                         <div className="text-center space-y-2">
                           <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                            {selected.price === 0
+                            {parseFloat(selected.price) === 0
                               ? "FREE"
-                              : formatCurrency(selected.price)}
+                              : formatCurrency(parseFloat(selected.price))}
                           </div>
                           <p className="text-gray-600 dark:text-gray-400">
                             {selected.description}
