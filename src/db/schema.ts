@@ -353,11 +353,3 @@ export const paymentAccount = pgTable("payment_account", {
     .$defaultFn(() => /* @__PURE__ */ new Date())
     .notNull(),
 });
-
-export const paymentAccountRelations = relations(
-  paymentAccount,
-  ({ many }) => ({
-    // loose relation via card.paymentAccountId (nullable)
-    // We don't add a strict foreign key to avoid blocking deletions; logic handled in code
-  })
-);
