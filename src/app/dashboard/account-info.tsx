@@ -21,6 +21,10 @@ const formatAccountNumber = (
 };
 
 export function AccountInfo({ accountNumber, userName }: AccountInfoProps) {
+
+  const today = new Date();
+
+
   const [showFullNumber, setShowFullNumber] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -124,7 +128,7 @@ export function AccountInfo({ accountNumber, userName }: AccountInfoProps) {
             TOTAL CREDIT
           </h3>
           <h4 className="text-xs text-blue-300 dark:text-blue-400 mb-2">
-            AUG. 2025
+           {today.toLocaleDateString("en-US", { month: "long", year: "numeric" })}
           </h4>
           <div className="text-lg font-semibold text-white">$0.00</div>
         </div>
@@ -133,7 +137,7 @@ export function AccountInfo({ accountNumber, userName }: AccountInfoProps) {
             TOTAL DEBIT
           </h3>
           <h4 className="text-xs text-blue-300 dark:text-blue-400 mb-2">
-            AUG. 2025
+            {today.toLocaleDateString("en-US", { month: "long", year: "numeric" })}
           </h4>
           <div className="text-lg font-semibold text-white">$0.00</div>
         </div>
