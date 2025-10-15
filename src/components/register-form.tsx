@@ -10,7 +10,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Image from "next/image";
 import { initializeUserAccountOnSignUp } from "@/actions/user";
@@ -27,7 +26,6 @@ export function RegisterForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
-  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
 
   const {
