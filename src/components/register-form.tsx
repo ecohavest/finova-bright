@@ -53,9 +53,11 @@ export function RegisterForm({
             await initializeUserAccountOnSignUp();
           } catch {}
           toast.success("Registration successful", {
-            description: "Redirecting to dashboard...",
+            description:
+              "Please check your email to verify your account before logging in.",
           });
-          router.push("/dashboard");
+          // Don't redirect to dashboard immediately since email verification is required
+          // router.push("/dashboard");
         },
         onError: (error) => {
           toast.error("Registration failed", {
@@ -85,6 +87,16 @@ export function RegisterForm({
                 <p className="text-sm text-muted-foreground">
                   Please fill in the form below to create an account.
                 </p>
+                <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 text-sm">
+                  <p className="text-blue-800 dark:text-blue-200 font-medium">
+                    📧 Email verification required
+                  </p>
+                  <p className="text-blue-600 dark:text-blue-300">
+                    After registration, you&apos;ll receive a verification
+                    email. Please check your inbox and verify your account to
+                    complete the signup process.
+                  </p>
+                </div>
               </div>
               <div className="grid gap-3">
                 <Label htmlFor="name">Name</Label>

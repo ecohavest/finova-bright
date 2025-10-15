@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Image from "next/image";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -27,6 +28,8 @@ export function LoginForm({
 }: React.ComponentProps<"div">) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const [showResendOption, setShowResendOption] = useState(false);
+  const [userEmail, setUserEmail] = useState("");
 
   const {
     register,
@@ -38,6 +41,7 @@ export function LoginForm({
 
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
+    setShowResendOption(false);
 
     await authClient.signIn.email(
       {
@@ -52,13 +56,50 @@ export function LoginForm({
           router.push("/dashboard");
         },
         onError: (error) => {
-          toast.error("Login failed", {
-            description: error.error.message,
-          });
+          // Handle email verification required error
+          const errorMessage = error.error.message.toLowerCase();
+          if (
+            errorMessage.includes("email verification") ||
+            errorMessage.includes("verify") ||
+            errorMessage.includes("email not verified") ||
+            errorMessage.includes("not verified")
+          ) {
+            setUserEmail(data.email);
+            setShowResendOption(true);
+            toast.error("Email verification required", {
+              description:
+                "A new verification email has been sent. Please check your inbox or resend the verification email and verify your account.",
+            });
+          } else {
+            toast.error("Login failed", {
+              description: error.error.message,
+            });
+          }
         },
       }
     );
 
+    setIsLoading(false);
+  };
+
+  const handleResendVerification = async () => {
+    if (!userEmail) return;
+
+    setIsLoading(true);
+    try {
+      await authClient.sendVerificationEmail({
+        email: userEmail,
+        callbackURL: "/login",
+      });
+      toast.success("Verification email sent", {
+        description: "Please check your inbox for the verification link.",
+      });
+    } catch (error) {
+      console.error("Failed to send verification email:", error);
+      toast.error("Failed to send verification email", {
+        description: "Please try again later.",
+      });
+    }
     setIsLoading(false);
   };
 
@@ -75,6 +116,12 @@ export function LoginForm({
                 <p className="text-slate-600 dark:text-slate-400 text-balance">
                   Access your secure banking portal
                 </p>
+                <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg p-3 text-sm">
+                  <p className="text-green-800 dark:text-green-200">
+                    💡 Need to verify your email? Check your inbox for the
+                    verification link.
+                  </p>
+                </div>
               </div>
               <div className="grid gap-3">
                 <Label htmlFor="email">Email</Label>
@@ -111,6 +158,34 @@ export function LoginForm({
               >
                 {isLoading ? "Logging in..." : "Login"}
               </Button>
+
+              {showResendOption && (
+                <Alert className="border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950/20">
+                  <AlertDescription className="text-orange-800 dark:text-orange-200">
+                    <div className="flex flex-col gap-3">
+                      <p className="font-medium">
+                        📧 Email verification required
+                      </p>
+                      <p>
+                        A verification email has been sent to{" "}
+                        <strong>{userEmail}</strong>. Please check your inbox
+                        and click the verification link.
+                      </p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleResendVerification}
+                        disabled={isLoading}
+                        className="w-fit border-orange-300 text-orange-700 hover:bg-orange-100 dark:border-orange-700 dark:text-orange-300 dark:hover:bg-orange-900/20"
+                      >
+                        {isLoading ? "Sending..." : "Resend verification email"}
+                      </Button>
+                    </div>
+                  </AlertDescription>
+                </Alert>
+              )}
+
               <div className="text-center text-sm">
                 Don&apos;t have an account?{" "}
                 <a href="/register" className="underline underline-offset-4">
