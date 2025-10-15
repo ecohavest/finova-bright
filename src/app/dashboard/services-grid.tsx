@@ -215,7 +215,7 @@ export function ServicesGrid() {
           href="/dashboard/support"
           icon={MessageSquare}
           title="Swift Support"
-          onLoading={handleServiceClick}
+          // onLoading={handleServiceClick}
         />
       </div>
 

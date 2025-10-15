@@ -60,6 +60,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             url: "/admin/payment-methods",
             isActive: pathname === "/admin/payment-methods",
           },
+          {
+            title: "Support Chats",
+            url: "/admin/support",
+            isActive: pathname === "/admin/support",
+          },
         ],
       },
     ],

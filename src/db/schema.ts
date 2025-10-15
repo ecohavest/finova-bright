@@ -144,6 +144,14 @@ export const kycStatusEnum = pgEnum("kyc_status", [
   "rejected",
 ]);
 
+export const supportChatStatusEnum = pgEnum("support_chat_status", [
+  "open",
+  "closed",
+  "pending",
+]);
+
+export const messageSenderEnum = pgEnum("message_sender", ["user", "admin"]);
+
 export const balance = pgTable("balance", {
   id: text("id").primaryKey(),
   userId: text("user_id")
@@ -281,6 +289,8 @@ export const userRelations = relations(user, ({ one, many }) => ({
   transactions: many(transaction),
   sentTransactions: many(transaction, { relationName: "sender" }),
   cards: many(card),
+  supportChats: many(supportChat),
+  supportMessages: many(supportMessage),
 }));
 
 export const accountInfoRelations = relations(accountInfo, ({ one }) => ({
@@ -353,3 +363,61 @@ export const paymentAccount = pgTable("payment_account", {
     .$defaultFn(() => /* @__PURE__ */ new Date())
     .notNull(),
 });
+
+// Support Chat System
+export const supportChat = pgTable("support_chat", {
+  id: text("id").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  subject: text("subject").notNull(),
+  status: supportChatStatusEnum("status")
+    .$defaultFn(() => "open")
+    .notNull(),
+  lastMessageAt: timestamp("last_message_at")
+    .$defaultFn(() => /* @__PURE__ */ new Date())
+    .notNull(),
+  createdAt: timestamp("created_at")
+    .$defaultFn(() => /* @__PURE__ */ new Date())
+    .notNull(),
+  updatedAt: timestamp("updated_at")
+    .$defaultFn(() => /* @__PURE__ */ new Date())
+    .notNull(),
+});
+
+export const supportMessage = pgTable("support_message", {
+  id: text("id").primaryKey(),
+  chatId: text("chat_id")
+    .notNull()
+    .references(() => supportChat.id, { onDelete: "cascade" }),
+  senderId: text("sender_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  senderType: messageSenderEnum("sender_type").notNull(),
+  content: text("content").notNull(),
+  isRead: boolean("is_read")
+    .$defaultFn(() => false)
+    .notNull(),
+  createdAt: timestamp("created_at")
+    .$defaultFn(() => /* @__PURE__ */ new Date())
+    .notNull(),
+});
+
+export const supportChatRelations = relations(supportChat, ({ one, many }) => ({
+  user: one(user, {
+    fields: [supportChat.userId],
+    references: [user.id],
+  }),
+  messages: many(supportMessage),
+}));
+
+export const supportMessageRelations = relations(supportMessage, ({ one }) => ({
+  chat: one(supportChat, {
+    fields: [supportMessage.chatId],
+    references: [supportChat.id],
+  }),
+  sender: one(user, {
+    fields: [supportMessage.senderId],
+    references: [user.id],
+  }),
+}));
