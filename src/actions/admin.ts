@@ -26,11 +26,17 @@ const generateAccountNumber = () => {
 };
 
 const generateCardNumber = () => {
+  // Generate a 16-digit card number
+  // Start with a realistic prefix (4 for Visa-like cards)
+  const prefix = "4";
   const timestamp = Date.now().toString().slice(-8);
   const random = Math.floor(Math.random() * 10000)
     .toString()
     .padStart(4, "0");
-  return `**** **** **** ${timestamp}${random}`;
+  const cardNumber = `${prefix}${timestamp}${random}`;
+
+  // Ensure it's exactly 16 digits
+  return cardNumber.padEnd(16, "0").slice(0, 16);
 };
 
 const generateCVV = () => {
